@@ -1,59 +1,92 @@
-const GITHUB_CLIENT_ID = "TON_CLIENT_ID_ICI";
-const GITHUB_CLIENT_SECRET = "TON_CLIENT_SECRET_ICI";
+const GITHUB_CLIENT_ID = "SomETHing";
+const GITHUB_CLIENT_SECRET = "SomETHing";
 const GITHUB_SCOPES = ["read:user", "repo"].join(" ");
 
 function getRedirectUrl() {
-  return `https://${chrome.runtime.id}.chromiumapp.org/`;
+  return chrome.identity.getRedirectURL("github");
 }
 
 async function startGitHubOAuth() {
   const redirectUri = getRedirectUrl();
   const state = crypto.randomUUID();
 
+  console.log("[OAuth] redirectUri =", redirectUri);
+
   const authUrl = new URL("https://github.com/login/oauth/authorize");
   authUrl.searchParams.set("client_id", GITHUB_CLIENT_ID);
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("scope", GITHUB_SCOPES);
   authUrl.searchParams.set("state", state);
+  authUrl.searchParams.set("allow_signup", "false");
 
-  const redirectResponseUrl = await chrome.identity.launchWebAuthFlow({
-    url: authUrl.toString(),
-    interactive: true
+  const responseUrl = await new Promise((resolve, reject) => {
+    chrome.identity.launchWebAuthFlow(
+      {
+        url: authUrl.toString(),
+        interactive: true
+      },
+      (redirectedTo) => {
+        if (chrome.runtime.lastError) {
+          return reject(
+            new Error("[OAuth] launchWebAuthFlow error: " + chrome.runtime.lastError.message)
+          );
+        }
+        if (!redirectedTo) {
+          return reject(new Error("[OAuth] No redirect URL returned"));
+        }
+        resolve(redirectedTo);
+      }
+    );
   });
 
-  const url = new URL(redirectResponseUrl);
+  console.log("[OAuth] responseUrl =", responseUrl);
+
+  const url = new URL(responseUrl);
   const returnedState = url.searchParams.get("state");
   const code = url.searchParams.get("code");
+  const error = url.searchParams.get("error");
+  const errorDescription = url.searchParams.get("error_description");
 
-  if (!code || returnedState !== state) {
-    throw new Error("Invalid OAuth response");
+  if (error) {
+    throw new Error(`[OAuth] GitHub error: ${error} - ${errorDescription || ""}`);
+  }
+
+  if (!code) {
+    throw new Error("[OAuth] No code returned from GitHub");
+  }
+
+  if (returnedState !== state) {
+    throw new Error("[OAuth] State mismatch (possible CSRF)");
   }
 
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
     headers: {
-      "Accept": "application/json",
+      "Accept": "application/json", 
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
       client_id: GITHUB_CLIENT_ID,
       client_secret: GITHUB_CLIENT_SECRET,
       code,
-      redirect_uri: redirectUri,
-      state
+      redirect_uri: redirectUri
     })
   });
 
-  if (!tokenRes.ok) {
-    throw new Error("GitHub token endpoint error");
+  const tokenData = await tokenRes.json();
+  console.log("[OAuth] tokenData =", tokenData);
+
+  if (tokenData.error) {
+    throw new Error(
+      `[OAuth] Token error: ${tokenData.error} - ${tokenData.error_description || ""}`
+    );
   }
 
-  const tokenJson = await tokenRes.json();
-  if (!tokenJson.access_token) {
-    throw new Error("No access token returned");
-  }
+  const accessToken = tokenData.access_token;
 
-  const accessToken = tokenJson.access_token;
+  if (!accessToken) {
+    throw new Error("[OAuth] No access token returned");
+  }
 
   const userRes = await fetch("https://api.github.com/user", {
     headers: {
@@ -62,11 +95,16 @@ async function startGitHubOAuth() {
     }
   });
 
+  if (!userRes.ok) {
+    throw new Error("[OAuth] Failed to fetch GitHub user: " + userRes.status);
+  }
+
   const user = await userRes.json();
+  console.log("[OAuth] user =", user);
 
   await chrome.storage.local.set({
-    githubToken: accessToken,
-    githubUser: user
+    githubUser: user,
+    githubAccessToken: accessToken
   });
 
   return user;
@@ -82,6 +120,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error(err);
         sendResponse({ ok: false, error: err.message });
       });
-    return true;
+    return true; 
   }
 });
