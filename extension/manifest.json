@@ -7,11 +7,9 @@
     "default_popup": "popup.html",
     "default_title": "GitHub Bounty Rewards"
   },
-  "permissions": [
-    "storage",
-    "identity"
-  ],
-  "host_permissions": [
-    "https://api.github.com/*"
-  ]
+  "permissions": ["storage", "identity"],
+  "host_permissions": ["https://github.com/*", "https://api.github.com/*"],
+   "background": {
+    "service_worker": "background.js"
+  }
 }
