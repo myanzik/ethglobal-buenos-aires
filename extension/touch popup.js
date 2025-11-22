@@ -27,7 +27,7 @@ githubBtn?.addEventListener("click", async () => {
 
   try {
     // TODO: GitHub
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // mock
+    await new Promise((resolve) => setTimeout(resolve, 1500)); 
 
     if (statusEl) {
       statusEl.textContent = "GitHub connected (mock).";
@@ -47,7 +47,7 @@ walletBtn?.addEventListener("click", async () => {
 
   try {
     // TODO: base Wallet
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // mock
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     if (statusEl) {
       statusEl.textContent = "Wallet connected (mock).";
