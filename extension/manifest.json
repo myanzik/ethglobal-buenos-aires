@@ -7,9 +7,22 @@
     "default_popup": "popup.html",
     "default_title": "GitHub Bounty Rewards"
   },
-  "permissions": ["storage", "identity"],
-  "host_permissions": ["https://github.com/*", "https://api.github.com/*"],
-   "background": {
-    "service_worker": "background.js"
-  }
+  "permissions": [
+    "storage",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://github.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*/issues/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
 }
