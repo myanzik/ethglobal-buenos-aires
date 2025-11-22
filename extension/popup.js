@@ -20,43 +20,47 @@ function setLoading(button, isLoading, message) {
   }
 }
 
-githubBtn?.addEventListener("click", async () => {
-  setLoading(githubBtn, true, "Connecting to GitHub...");
+githubBtn?.addEventListener("click", () => {
+  setLoading(githubBtn, true, "Connecting to GitHub…");
 
-  try {
-    // TODO: Implement GitHub connection
-    await new Promise((resolve) => setTimeout(resolve, 1500)); 
-
-    if (statusEl) {
-      statusEl.textContent = "GitHub connected (mock).";
-    }
-  } catch (err) {
-    console.error(err);
-    if (statusEl) {
-      statusEl.textContent = "Error while connecting to GitHub.";
-    }
-  } finally {
+  chrome.runtime.sendMessage({ type: "LOGIN_GITHUB" }, response => {
     setLoading(githubBtn, false);
-  }
+
+    if (chrome.runtime.lastError) {
+      console.error(chrome.runtime.lastError);
+      if (statusEl) statusEl.textContent = "GitHub login failed (no background).";
+      return;
+    }
+
+    if (!response || !response.ok) {
+      if (statusEl) statusEl.textContent = "GitHub login failed.";
+      console.error(response?.error);
+      return;
+    }
+
+    const user = response.user;
+    if (statusEl) {
+      statusEl.textContent = `Logged in as ${user.login}`;
+    }
+  });
 });
 
 walletBtn?.addEventListener("click", async () => {
   setLoading(walletBtn, true, "Connecting wallet...");
 
   try {
-    // TODO: Implement wallet connection
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    if (statusEl) {
-      statusEl.textContent = "Wallet connected (mock).";
-    }
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (statusEl) statusEl.textContent = "Wallet connected (mock).";
   } catch (err) {
     console.error(err);
-    if (statusEl) {
-      statusEl.textContent = "Error while connecting wallet.";
-    }
+    if (statusEl) statusEl.textContent = "Error while connecting wallet.";
   } finally {
     setLoading(walletBtn, false);
   }
 });
 
+chrome.storage.local.get(["githubUser"], data => {
+  if (data.githubUser && statusEl) {
+    statusEl.textContent = `Logged in as ${data.githubUser.login}`;
+  }
+});

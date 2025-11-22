@@ -1,5 +1,5 @@
-const GITHUB_CLIENT_ID = "somETHing"
-const GITHUB_CLIENT_SECRET = "somETHing";
+const GITHUB_CLIENT_ID = "TON_CLIENT_ID_ICI";
+const GITHUB_CLIENT_SECRET = "TON_CLIENT_SECRET_ICI";
 const GITHUB_SCOPES = ["read:user", "repo"].join(" ");
 
 function getRedirectUrl() {
