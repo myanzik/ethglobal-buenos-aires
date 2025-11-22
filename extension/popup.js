@@ -26,7 +26,7 @@ githubBtn?.addEventListener("click", async () => {
   setLoading(githubBtn, true, "Connecting to GitHub...");
 
   try {
-    // TODO: GitHub
+    // TODO: Implement GitHub connection
     await new Promise((resolve) => setTimeout(resolve, 1500)); 
 
     if (statusEl) {
@@ -46,7 +46,7 @@ walletBtn?.addEventListener("click", async () => {
   setLoading(walletBtn, true, "Connecting wallet...");
 
   try {
-    // TODO: base Wallet
+    // TODO: Implement wallet connection
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
     if (statusEl) {
@@ -61,3 +61,4 @@ walletBtn?.addEventListener("click", async () => {
     setLoading(walletBtn, false);
   }
 });
+
