@@ -1,6 +1,16 @@
+html,
 body {
+  margin: 0;
+  padding: 0;
+  background-color: #020617;
+}
+.section {
+  padding: 0;
+}
+
+body {
+   background-color: #020617;
   min-width: 260px;
-  padding: 1rem;
 }
 .logo-circle {
   width: 48px;
@@ -14,4 +24,16 @@ body {
 .icon svg {
   width: 1em;
   height: 1em;
+}
+.container {
+  padding: 0;
+  margin: 0;
+}
+
+.box {
+  margin: 0;
+}
+.container {
+  width: 100%;
+   background-color: #020617;
 }
