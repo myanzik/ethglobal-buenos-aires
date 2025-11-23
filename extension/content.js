@@ -906,7 +906,7 @@
             <strong>Issue:</strong> #${issueData.issueNumber}
           </p>
           <div class="github-bounty-form-group">
-            <label for="token-amount">Token Amount:</label>
+            <label for="token-amount">USDC Amount:</label>
             <input 
               type="number" 
               id="token-amount" 
