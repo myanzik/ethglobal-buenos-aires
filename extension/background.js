@@ -203,4 +203,87 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
     return true; 
   }
+
+  // Fetch PR data (author and contributors)
+  if (message.type === "FETCH_PR_DATA") {
+    (async () => {
+      try {
+        const { githubToken } = await chrome.storage.local.get(["githubToken"]);
+        if (!githubToken) {
+          sendResponse({ ok: false, error: "No GitHub token found" });
+          return;
+        }
+
+        const { owner, repo, prNumber } = message;
+        const headers = {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: "application/vnd.github+json",
+        };
+
+        // Fetch PR data
+        const prResp = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+          { headers }
+        );
+
+        if (!prResp.ok) {
+          throw new Error(`GitHub PR error: ${prResp.status}`);
+        }
+
+        const pr = await prResp.json();
+        
+        // Extract author
+        const author = pr.user?.login || null;
+
+        // Fetch commits to get contributors
+        const commitsResp = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/commits`,
+          { headers }
+        );
+
+        const contributors = new Set();
+        if (commitsResp.ok) {
+          const commits = await commitsResp.json();
+          commits.forEach((commit) => {
+            if (commit.author?.login) {
+              contributors.add(commit.author.login);
+            }
+            if (commit.committer?.login) {
+              contributors.add(commit.committer.login);
+            }
+          });
+        }
+
+        // Fetch reviews to get reviewers
+        const reviewsResp = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+          { headers }
+        );
+
+        if (reviewsResp.ok) {
+          const reviews = await reviewsResp.json();
+          reviews.forEach((review) => {
+            if (review.user?.login) {
+              contributors.add(review.user.login);
+            }
+          });
+        }
+
+        // Remove author from contributors list
+        contributors.delete(author);
+
+        sendResponse({
+          ok: true,
+          prData: {
+            author,
+            contributors: Array.from(contributors),
+          },
+        });
+      } catch (e) {
+        console.error("Error fetching PR data:", e);
+        sendResponse({ ok: false, error: e.message });
+      }
+    })();
+    return true; // Important: return true to indicate async response
+  }
 });
