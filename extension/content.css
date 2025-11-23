@@ -270,3 +270,23 @@
   border-color: #d1d9e0;
 }
 
+.Footer-module__childrenStyling--cH0iq {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.IssueActions-module__IssueActionsButtonGroup--Usbpc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.IssueActions-module__IssueActionsButtonGroup--Usbpc > div {
+  display: flex;
+  align-items: center;
+}
+
+#github-bounty-claim-btn {
+  margin-right: 8px;
+}
