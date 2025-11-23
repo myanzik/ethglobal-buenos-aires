@@ -30,7 +30,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["injected.js"],
+      "resources": ["injected.js", "ethers.js"],
       "matches": ["https://github.com/*"]
     }
   ]

@@ -18,13 +18,13 @@ export BASE_SEPOLIA_PRIVATE_KEY="your_private_key_here"
 ### Using npm/pnpm scripts (Easiest)
 
 ```bash
-# Deploy with default test token using Ignition
+# Deploy with default USDC token (0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04) using Ignition
 pnpm deploy:base-sepolia
 
 # Or using the script method
 pnpm deploy:base-sepolia:script
 
-# Deploy with custom reward token
+# Deploy with a different reward token (if needed)
 pnpm deploy:base-sepolia -- --parameters '{"IssueTrackerModule":{"rewardToken":"0xYourTokenAddress"}}'
 ```
 

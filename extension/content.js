@@ -47,7 +47,7 @@
 
     let newIssueButton = null;
     let targetContainer = null;
-
+    
     // Strategy 1: Look for GitHub's issues page header/actions area
     const issuesHeader =
       document.querySelector(".subnav") ||
@@ -91,7 +91,7 @@
       const allButtons = document.querySelectorAll(
         'button, a[role="button"], a.btn'
       );
-      for (const btn of allButtons) {
+        for (const btn of allButtons) {
         const text = btn.textContent?.trim() || "";
         const ariaLabel = btn.getAttribute("aria-label") || "";
         const href = btn.getAttribute("href") || "";
@@ -130,7 +130,7 @@
           newIssueButton = link;
           targetContainer = link.parentElement;
           console.log("GitHub Bounty: Found New issue button by href");
-          break;
+              break;
         }
       }
     }
@@ -145,7 +145,7 @@
         Array.from(document.querySelectorAll('button, a[role="button"]'))
           .slice(0, 10)
           .map((b) => ({
-            text: b.textContent?.trim(),
+        text: b.textContent?.trim(),
             ariaLabel: b.getAttribute("aria-label"),
             href: b.getAttribute("href"),
             classes: b.className,
@@ -166,7 +166,7 @@
     if (newIssueButton.hasAttribute("data-view-component")) {
       sponsorButton.setAttribute("data-view-component", "true");
     }
-
+    
     // Add click handler
     sponsorButton.addEventListener("click", function (e) {
       e.preventDefault();
@@ -191,14 +191,14 @@
 
   // Contract configuration
   const CONFIG = {
-    // Token contract address (ERC20 token)
-    tokenAddress: "0x4700A50d858Cb281847ca4Ee0938F80DEfB3F1dd",
-    // Contract address to send tokens to (ReserveManager or proxy)
-    contractAddress: "0x073671aE6EAa2468c203fDE3a79dEe0836adF032",
-    // Chain ID for Ethereum Sepolia testnet
-    chainId: "0xaa36a7", // 11155111 in hex
-    chainName: "Sepolia",
-    rpcUrl: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY", // Optional, MetaMask will use its own
+    // Token contract address (USDC on Base Sepolia)
+    tokenAddress: "0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04",
+    // RewardDistributor contract address (Base Sepolia)
+    rewardDistributorAddress: "0x8E8882870dbcEc2C0813B255DA1A706fd5f09119",
+    // Chain ID for Base Sepolia testnet
+    chainId: "0x14a34", // 84532 in hex
+    chainName: "Base Sepolia",
+    rpcUrl: "https://sepolia.base.org", // Optional, MetaMask will use its own
   };
 
   // ERC20 ABI (minimal - just what we need)
@@ -211,6 +211,26 @@
       name: "transfer",
       outputs: [{ internalType: "bool", name: "", type: "bool" }],
       stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        { internalType: "address", name: "spender", type: "address" },
+        { internalType: "uint256", name: "amount", type: "uint256" },
+      ],
+      name: "approve",
+      outputs: [{ internalType: "bool", name: "", type: "bool" }],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        { internalType: "address", name: "owner", type: "address" },
+        { internalType: "address", name: "spender", type: "address" },
+      ],
+      name: "allowance",
+      outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+      stateMutability: "view",
       type: "function",
     },
     {
@@ -229,9 +249,53 @@
     },
   ];
 
+  // RewardDistributor ABI (minimal - just fundIssue function)
+  const REWARD_DISTRIBUTOR_ABI = [
+    {
+      inputs: [
+        { internalType: "string", name: "owner", type: "string" },
+        { internalType: "string", name: "repo", type: "string" },
+        { internalType: "uint256", name: "issueNumber", type: "uint256" },
+        { internalType: "uint256", name: "amount", type: "uint256" },
+      ],
+      name: "fundIssue",
+      outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+  ];
+
   // Inject the injected.js script into page context (only once)
   let injectedScriptLoaded = false;
   let injectedScriptPromise = null;
+
+  // Inject ethers.js into page context
+  async function ensureEthersInjected() {
+    return new Promise((resolve, reject) => {
+      // Check if ethers.js script tag already exists
+      const existingEthersScript = document.querySelector('script[src*="ethers.js"]');
+      if (existingEthersScript) {
+        console.log("GitHub Bounty: Ethers.js script tag already exists");
+        // Give it time to load
+        setTimeout(() => resolve(), 200);
+        return;
+      }
+
+      // Inject ethers.js from extension
+      const ethersScript = document.createElement("script");
+      ethersScript.src = chrome.runtime.getURL("ethers.js");
+      ethersScript.onload = () => {
+        console.log("GitHub Bounty: Ethers.js loaded");
+        // Give it a moment to initialize
+        setTimeout(() => resolve(), 100);
+      };
+      ethersScript.onerror = () => {
+        console.error("GitHub Bounty: Failed to load ethers.js");
+        reject(new Error("Failed to load ethers.js"));
+      };
+      (document.head || document.documentElement).appendChild(ethersScript);
+    });
+  }
 
   function ensureInjectedScript() {
     if (injectedScriptLoaded) {
@@ -243,14 +307,24 @@
     }
 
     injectedScriptPromise = new Promise((resolve, reject) => {
+      // Check if script tag already exists
+      const existingScript = document.querySelector('script[src*="injected.js"]');
+      if (existingScript) {
+        console.log("GitHub Bounty: Injected script tag already exists");
+        injectedScriptLoaded = true;
+        // Give it time to initialize
+        setTimeout(() => resolve(), 200);
+        return;
+      }
+
       const script = document.createElement("script");
       script.src = chrome.runtime.getURL("injected.js");
       script.onload = function () {
         console.log("GitHub Bounty: Injected script loaded successfully");
-        this.remove();
+        // Don't remove the script - we need it to stay in the page context
         injectedScriptLoaded = true;
-        // Give it a moment to initialize
-        setTimeout(() => resolve(), 100);
+        // Give it time to initialize and set up event listeners
+        setTimeout(() => resolve(), 300);
       };
       script.onerror = function () {
         console.error("GitHub Bounty: Failed to load injected script");
@@ -311,11 +385,21 @@
   async function connectMetaMask() {
     console.log("GitHub Bounty: Connecting to MetaMask");
     try {
+      // Ensure ethers.js is loaded first
+      await ensureEthersInjected();
       await ensureInjectedScript();
       console.log("GitHub Bounty: Ensured injected script is loaded");
 
+      // Give a bit more time for the script to be fully ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       return new Promise((resolve, reject) => {
         const handler = (event) => {
+          // Only process messages from our extension
+          if (!event.data || !event.data.type || !event.data.type.startsWith('GITHUB_BOUNTY_')) {
+            return;
+          }
+
           console.log("GitHub Bounty: Received message:", event.data);
           if (
             event.data &&
@@ -338,20 +422,23 @@
         };
         window.addEventListener("message", handler);
 
-        // Send message to injected script
-        console.log(
-          "GitHub Bounty: Sending CONNECT_METAMASK message with chainId:",
-          CONFIG.chainId
-        );
-        window.postMessage(
-          {
-            type: "GITHUB_BOUNTY_CONNECT_METAMASK",
-            payload: {
-              chainId: CONFIG.chainId,
+        // Wait a bit more to ensure injected script is listening
+        setTimeout(() => {
+          // Send message to injected script
+          console.log(
+            "GitHub Bounty: Sending CONNECT_METAMASK message with chainId:",
+            CONFIG.chainId
+          );
+          window.postMessage(
+            {
+              type: "GITHUB_BOUNTY_CONNECT_METAMASK",
+              payload: {
+                chainId: CONFIG.chainId,
+              },
             },
-          },
-          "*"
-        );
+            "*"
+          );
+        }, 300);
 
         // Timeout after 30 seconds
         setTimeout(() => {
@@ -371,6 +458,7 @@
 
   // Get token balance (using injected script)
   async function getTokenBalance(account) {
+    await ensureEthersInjected();
     await ensureInjectedScript();
 
     return new Promise((resolve, reject) => {
@@ -408,13 +496,57 @@
     });
   }
 
-  // Send tokens to contract (using injected script)
-  async function sendTokens(account, amount) {
+  // Check token allowance (using injected script)
+  async function checkTokenAllowance(account, amount) {
+    await ensureEthersInjected();
     await ensureInjectedScript();
 
     return new Promise((resolve, reject) => {
       const handler = (event) => {
-        if (event.data && event.data.type === "GITHUB_BOUNTY_SEND_RESULT") {
+        if (event.data && event.data.type === "GITHUB_BOUNTY_ALLOWANCE_RESULT") {
+          window.removeEventListener("message", handler);
+          if (event.data.error) {
+            reject(new Error(event.data.error));
+          } else {
+            resolve({
+              allowance: event.data.allowance,
+              decimals: event.data.decimals,
+              isApproved: event.data.isApproved,
+            });
+          }
+        }
+      };
+      window.addEventListener("message", handler);
+
+      // Send message to injected script
+      window.postMessage(
+        {
+          type: "GITHUB_BOUNTY_CHECK_ALLOWANCE",
+          payload: {
+            account: account,
+            tokenAddress: CONFIG.tokenAddress,
+            spenderAddress: CONFIG.rewardDistributorAddress,
+            amount: amount,
+          },
+        },
+        "*"
+      );
+
+      setTimeout(() => {
+        window.removeEventListener("message", handler);
+        reject(new Error("Allowance check timeout"));
+      }, 30000);
+    });
+  }
+
+  // Approve tokens for RewardDistributor (using injected script)
+  async function approveTokens(account, amount) {
+    await ensureEthersInjected();
+    await ensureInjectedScript();
+
+    return new Promise((resolve, reject) => {
+      const handler = (event) => {
+        if (event.data && event.data.type === "GITHUB_BOUNTY_APPROVE_RESULT") {
           window.removeEventListener("message", handler);
           if (event.data.error) {
             reject(new Error(event.data.error));
@@ -432,12 +564,12 @@
       // Send message to injected script
       window.postMessage(
         {
-          type: "GITHUB_BOUNTY_SEND_TOKENS",
+          type: "GITHUB_BOUNTY_APPROVE_TOKENS",
           payload: {
             account: account,
             amount: amount,
             tokenAddress: CONFIG.tokenAddress,
-            contractAddress: CONFIG.contractAddress,
+            spenderAddress: CONFIG.rewardDistributorAddress,
           },
         },
         "*"
@@ -445,7 +577,54 @@
 
       setTimeout(() => {
         window.removeEventListener("message", handler);
-        reject(new Error("Send transaction timeout"));
+        reject(new Error("Approve transaction timeout"));
+      }, 120000); // 2 minutes for transaction
+    });
+  }
+
+  // Fund issue using RewardDistributor contract (using injected script)
+  async function fundIssue(account, owner, repo, issueNumber, amount) {
+    await ensureEthersInjected();
+    await ensureInjectedScript();
+
+    return new Promise((resolve, reject) => {
+      const handler = (event) => {
+        if (event.data && event.data.type === "GITHUB_BOUNTY_FUND_RESULT") {
+          window.removeEventListener("message", handler);
+          if (event.data.error) {
+            reject(new Error(event.data.error));
+          } else {
+            resolve({
+              success: true,
+              txHash: event.data.txHash,
+              receipt: event.data.receipt,
+              issueId: event.data.issueId,
+            });
+          }
+        }
+      };
+      window.addEventListener("message", handler);
+
+      // Send message to injected script
+      window.postMessage(
+        {
+          type: "GITHUB_BOUNTY_FUND_ISSUE",
+          payload: {
+            account: account,
+            owner: owner,
+            repo: repo,
+            issueNumber: issueNumber,
+            amount: amount,
+            rewardDistributorAddress: CONFIG.rewardDistributorAddress,
+            tokenAddress: CONFIG.tokenAddress,
+          },
+        },
+        "*"
+      );
+
+      setTimeout(() => {
+        window.removeEventListener("message", handler);
+        reject(new Error("Fund issue transaction timeout"));
       }, 120000); // 2 minutes for transaction
     });
   }
@@ -491,7 +670,8 @@
         <div class="github-bounty-modal-footer">
           <button id="modal-cancel-btn" class="github-bounty-btn-secondary">Cancel</button>
           <button id="modal-connect-btn" class="github-bounty-btn-primary">Connect Wallet</button>
-          <button id="modal-send-btn" class="github-bounty-btn-primary" style="display: none;">Send Tokens</button>
+          <button id="modal-approve-btn" class="github-bounty-btn-primary" style="display: none;">Approve Tokens</button>
+          <button id="modal-fund-btn" class="github-bounty-btn-primary" style="display: none;">Fund Issue</button>
         </div>
       </div>
     `;
@@ -502,12 +682,14 @@
     const closeBtn = modal.querySelector("#modal-close-btn");
     const cancelBtn = modal.querySelector("#modal-cancel-btn");
     const connectBtn = modal.querySelector("#modal-connect-btn");
-    const sendBtn = modal.querySelector("#modal-send-btn");
+    const approveBtn = modal.querySelector("#modal-approve-btn");
+    const fundBtn = modal.querySelector("#modal-fund-btn");
     const amountInput = modal.querySelector("#token-amount");
     const statusEl = modal.querySelector("#modal-status");
     const balanceEl = modal.querySelector("#token-balance");
 
     let connectedAccount = null;
+    let tokensApproved = false;
 
     // Close modal
     const closeModal = () => {
@@ -561,8 +743,32 @@
           balanceEl.style.display = "block";
         }
 
+        // Check if tokens are already approved
+        const amount = parseFloat(amountInput.value);
+        if (amount && amount > 0) {
+          try {
+            const { isApproved } = await checkTokenAllowance(connectedAccount, amount);
+            tokensApproved = isApproved;
+            if (isApproved) {
+              approveBtn.style.display = "none";
+              fundBtn.style.display = "inline-block";
+            } else {
+              approveBtn.style.display = "inline-block";
+              fundBtn.style.display = "none";
+            }
+          } catch (err) {
+            console.error("Error checking allowance:", err);
+            // Default to showing approve button if check fails
+            approveBtn.style.display = "inline-block";
+            fundBtn.style.display = "none";
+          }
+        } else {
+          // No amount entered yet, show approve button
+          approveBtn.style.display = "inline-block";
+          fundBtn.style.display = "none";
+        }
+
         connectBtn.style.display = "none";
-        sendBtn.style.display = "inline-block";
       } catch (error) {
         statusEl.textContent = `Error: ${error.message}`;
         statusEl.className = "github-bounty-status github-bounty-status-error";
@@ -572,37 +778,129 @@
       }
     });
 
-    // Send tokens
-    sendBtn.addEventListener("click", async () => {
+    // Approve tokens
+    approveBtn.addEventListener("click", async () => {
       const amount = parseFloat(amountInput.value);
 
       if (!amount || amount <= 0) {
         statusEl.textContent = "Please enter a valid amount";
         statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
         return;
       }
 
       if (!connectedAccount) {
         statusEl.textContent = "Please connect your wallet first";
         statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
         return;
       }
 
       try {
-        sendBtn.disabled = true;
-        sendBtn.textContent = "Sending...";
-        statusEl.textContent = "Sending tokens...";
+        approveBtn.disabled = true;
+        approveBtn.textContent = "Approving...";
+        statusEl.textContent = "Approving tokens...";
         statusEl.className = "github-bounty-status github-bounty-status-info";
+        statusEl.style.display = "block";
+        console.log("GitHub Bounty: Approving tokens", amount);
 
-        const result = await sendTokens(connectedAccount, amount);
+        const result = await approveTokens(connectedAccount, amount);
 
-        statusEl.innerHTML = `Success! Transaction: <a href="https://sepolia.etherscan.io/tx/${
+        statusEl.innerHTML = `Tokens approved! Transaction: <a href="https://sepolia.basescan.org/tx/${
           result.txHash
         }" target="_blank">${result.txHash.substring(0, 10)}...</a>`;
         statusEl.className =
           "github-bounty-status github-bounty-status-success";
 
-        sendBtn.textContent = "Sent!";
+        tokensApproved = true;
+        approveBtn.style.display = "none";
+        fundBtn.style.display = "inline-block";
+        approveBtn.disabled = false;
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        approveBtn.disabled = false;
+        approveBtn.textContent = "Approve Tokens";
+      }
+    });
+
+    // Re-check allowance when amount changes
+    amountInput.addEventListener("input", async () => {
+      if (connectedAccount) {
+        const amount = parseFloat(amountInput.value);
+        if (amount && amount > 0) {
+          try {
+            const { isApproved } = await checkTokenAllowance(connectedAccount, amount);
+            tokensApproved = isApproved;
+            if (isApproved) {
+              approveBtn.style.display = "none";
+              fundBtn.style.display = "inline-block";
+            } else {
+              approveBtn.style.display = "inline-block";
+              fundBtn.style.display = "none";
+            }
+          } catch (err) {
+            console.error("Error checking allowance:", err);
+          }
+        }
+      }
+    });
+
+    // Fund issue
+    fundBtn.addEventListener("click", async () => {
+      const amount = parseFloat(amountInput.value);
+
+      if (!amount || amount <= 0) {
+        statusEl.textContent = "Please enter a valid amount";
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        return;
+      }
+
+      if (!connectedAccount) {
+        statusEl.textContent = "Please connect your wallet first";
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        return;
+      }
+
+      if (!tokensApproved) {
+        statusEl.textContent = "Please approve tokens first";
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        return;
+      }
+
+      if (issueData.issueNumber === "N/A") {
+        statusEl.textContent = "Please navigate to a specific issue page";
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        return;
+      }
+
+      try {
+        fundBtn.disabled = true;
+        fundBtn.textContent = "Funding...";
+        statusEl.textContent = "Funding issue...";
+        statusEl.className = "github-bounty-status github-bounty-status-info";
+        statusEl.style.display = "block";
+
+        const result = await fundIssue(
+          connectedAccount,
+          issueData.owner,
+          issueData.repo,
+          parseInt(issueData.issueNumber),
+          amount
+        );
+
+        statusEl.innerHTML = `Issue funded successfully! Transaction: <a href="https://sepolia.basescan.org/tx/${
+          result.txHash
+        }" target="_blank">${result.txHash.substring(0, 10)}...</a>`;
+        statusEl.className =
+          "github-bounty-status github-bounty-status-success";
+
+        fundBtn.textContent = "Funded!";
 
         // Close modal after 3 seconds
         setTimeout(() => {
@@ -611,8 +909,9 @@
       } catch (error) {
         statusEl.textContent = `Error: ${error.message}`;
         statusEl.className = "github-bounty-status github-bounty-status-error";
-        sendBtn.disabled = false;
-        sendBtn.textContent = "Send Tokens";
+        statusEl.style.display = "block";
+        fundBtn.disabled = false;
+        fundBtn.textContent = "Fund Issue";
       }
     });
   }
@@ -624,7 +923,7 @@
     const issueMatch = issueUrl.match(
       /github\.com\/([^\/]+)\/([^\/]+)\/issues\/?(\d*)/
     );
-
+    
     let issueData;
     if (issueMatch) {
       const [, owner, repo, issueNumber] = issueMatch;
@@ -666,7 +965,7 @@
   // Wait for page to load and observe changes (GitHub uses dynamic content)
   function init() {
     console.log("GitHub Bounty: Initializing...");
-
+    
     // Try immediately
     addSponsorButton();
 

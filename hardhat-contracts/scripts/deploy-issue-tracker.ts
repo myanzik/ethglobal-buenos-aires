@@ -4,8 +4,13 @@ import { ethers } from "hardhat";
  * Simple deployment script using Hardhat's ethers
  * Alternative to Ignition if you prefer a more traditional approach
  * 
+ * Default reward token: USDC on Base Sepolia (0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04)
+ * 
  * Usage:
- *   npx hardhat run scripts/deploy-issue-tracker.ts --network sepolia
+ *   npx hardhat run scripts/deploy-issue-tracker.ts --network baseSepolia
+ * 
+ * To use a different token:
+ *   REWARD_TOKEN_ADDRESS=0x... npx hardhat run scripts/deploy-issue-tracker.ts --network baseSepolia
  */
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -13,8 +18,9 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
-  // Get reward token address from environment or use default
-  const rewardTokenAddress = process.env.REWARD_TOKEN_ADDRESS || "0x4700A50d858Cb281847ca4Ee0938F80DEfB3F1dd";
+  // Get reward token address from environment or use USDC on Base Sepolia as default
+  // USDC token address on Base Sepolia: 0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04
+  const rewardTokenAddress = process.env.REWARD_TOKEN_ADDRESS || "0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04";
   
   console.log("\n1. Deploying IssueTracker...");
   console.log("   Reward Token:", rewardTokenAddress);
