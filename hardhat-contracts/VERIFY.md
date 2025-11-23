@@ -51,6 +51,44 @@ pnpm verify:base-sepolia 0x5A75957CA230a2089e977553B92eF5D91Ea97Cd8 0xAF33ADd791
 pnpm verify:base-sepolia 0x8E8882870dbcEc2C0813B255DA1A706fd5f09119 0x5A75957CA230a2089e977553B92eF5D91Ea97Cd8 0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04
 ```
 
+### Generate Standard JSON for Manual Verification
+
+If automatic verification fails, you can generate Standard JSON Input files for manual verification:
+
+```bash
+# Generate standard JSON files from build-info
+pnpm generate:standard-json
+```
+
+This will create Standard JSON files in `scripts/standard-json/`:
+- `IssueTracker.json`
+- `RewardDistributor.json`
+
+**How to use Standard JSON files:**
+
+1. **BaseScan (Base Sepolia)**:
+   - Go to: https://sepolia.basescan.org/verifyContract
+   - Enter your contract address
+   - Select "Via Standard JSON Input"
+   - Upload the corresponding JSON file (e.g., `IssueTracker.json`)
+   - Enter constructor arguments
+   - Submit for verification
+
+2. **Blockscout (Base Sepolia)**:
+   - Go to: https://base-sepolia.blockscout.com/contracts/verify
+   - Enter your contract address
+   - Select "Standard JSON Input"
+   - Upload the JSON file
+   - Enter constructor arguments
+   - Submit
+
+3. **Sourcify**:
+   - Go to: https://sourcify.dev/
+   - Select your network (Base Sepolia)
+   - Enter contract address
+   - Upload the Standard JSON file
+   - Submit
+
 ## Current Deployed Addresses
 
 Based on your latest deployment:

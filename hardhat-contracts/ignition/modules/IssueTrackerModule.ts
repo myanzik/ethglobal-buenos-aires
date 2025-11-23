@@ -15,7 +15,7 @@ export default buildModule("IssueTrackerModule", (m) => {
   // Get reward token address from parameters or use USDC on Base Sepolia as default
   // USDC token address on Base Sepolia: 0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04
   // You can override this via --parameters flag
-  const rewardToken = m.getParameter("rewardToken", "0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04");
+  const rewardToken = m.getParameter("rewardToken", "0x036CbD53842c5426634e7929541eC2318f3dCF7e");
 
   // Deploy IssueTracker contract
   // Requires: rewardToken address (ERC20 token for rewards)

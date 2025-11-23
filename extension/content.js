@@ -3,6 +3,13 @@
 (function () {
   "use strict";
 
+  // Check if chrome.runtime is available
+  if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.getURL) {
+    console.error("GitHub Bounty: Extension runtime not available. Please reload the extension.");
+    // Don't proceed if chrome.runtime is not available
+    return;
+  }
+
   console.log("GitHub Bounty: Content script loaded");
 
   // Load ethers.js library
@@ -192,9 +199,9 @@
   // Contract configuration
   const CONFIG = {
     // Token contract address (USDC on Base Sepolia)
-    tokenAddress: "0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04",
+    tokenAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     // RewardDistributor contract address (Base Sepolia)
-    rewardDistributorAddress: "0x8E8882870dbcEc2C0813B255DA1A706fd5f09119",
+    rewardDistributorAddress: "0xD916aC68e161a2221BA6616d3EE5864626007EBb",
     // Chain ID for Base Sepolia testnet
     chainId: "0x14a34", // 84532 in hex
     chainName: "Base Sepolia",
@@ -272,6 +279,13 @@
   // Inject ethers.js into page context
   async function ensureEthersInjected() {
     return new Promise((resolve, reject) => {
+      // Check if chrome.runtime is available
+      if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.getURL) {
+        console.error("GitHub Bounty: chrome.runtime is not available");
+        reject(new Error("Extension runtime not available. Please reload the extension."));
+        return;
+      }
+
       // Check if ethers.js script tag already exists
       const existingEthersScript = document.querySelector('script[src*="ethers.js"]');
       if (existingEthersScript) {
@@ -307,6 +321,14 @@
     }
 
     injectedScriptPromise = new Promise((resolve, reject) => {
+      // Check if chrome.runtime is available
+      if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.getURL) {
+        console.error("GitHub Bounty: chrome.runtime is not available");
+        injectedScriptPromise = null;
+        reject(new Error("Extension runtime not available. Please reload the extension."));
+        return;
+      }
+
       // Check if script tag already exists
       const existingScript = document.querySelector('script[src*="injected.js"]');
       if (existingScript) {
@@ -722,21 +744,22 @@
 
         // Get and display balance
         try {
-          const { balance, decimals } = await getTokenBalance(connectedAccount);
-          // Format balance (balance is a string, decimals is a number)
-          const balanceBigInt = BigInt(balance);
-          const divisor = BigInt(10 ** decimals);
-          const wholePart = balanceBigInt / divisor;
-          const fractionalPart = balanceBigInt % divisor;
-          const balanceFormatted =
-            fractionalPart === 0n
-              ? wholePart.toString()
-              : `${wholePart}.${fractionalPart
-                  .toString()
-                  .padStart(decimals, "0")
-                  .replace(/0+$/, "")}`;
-          balanceEl.textContent = `Balance: ${balanceFormatted} tokens`;
-          balanceEl.style.display = "block";
+          // const { balance, decimals } = await getTokenBalance(connectedAccount);
+          // console.log("Fetched balance:", balance, "Decimals:", decimals);
+          // // Format balance (balance is a string, decimals is a number)
+          // const balanceBigInt = BigInt(balance);
+          // const divisor = BigInt(10 ** decimals);
+          // const wholePart = balanceBigInt / divisor;
+          // const fractionalPart = balanceBigInt % divisor;
+          // const balanceFormatted =
+          //   fractionalPart === 0n
+          //     ? wholePart.toString()
+          //     : `${wholePart}.${fractionalPart
+          //         .toString()
+          //         .padStart(decimals, "0")
+          //         .replace(/0+$/, "")}`;
+          // balanceEl.textContent = `Balance: ${balanceFormatted} tokens`;
+          // balanceEl.style.display = "block";
         } catch (err) {
           console.error("Error fetching balance:", err);
           balanceEl.textContent = "Could not fetch balance";
@@ -812,9 +835,34 @@
         statusEl.className =
           "github-bounty-status github-bounty-status-success";
 
-        tokensApproved = true;
-        approveBtn.style.display = "none";
-        fundBtn.style.display = "inline-block";
+        // Wait for transaction to be confirmed and re-check allowance
+        statusEl.textContent = "Waiting for approval confirmation...";
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for confirmation
+        
+        // Re-check allowance to confirm
+        try {
+          const { isApproved } = await checkTokenAllowance(connectedAccount, amount);
+          tokensApproved = isApproved;
+          if (isApproved) {
+            statusEl.innerHTML = `Tokens approved! Transaction: <a href="https://sepolia.basescan.org/tx/${
+              result.txHash
+            }" target="_blank">${result.txHash.substring(0, 10)}...</a>`;
+            approveBtn.style.display = "none";
+            fundBtn.style.display = "inline-block";
+          } else {
+            statusEl.textContent = "Approval pending. Please wait a moment and try again.";
+            tokensApproved = false;
+            approveBtn.style.display = "inline-block";
+            fundBtn.style.display = "none";
+          }
+        } catch (err) {
+          console.error("Error re-checking allowance:", err);
+          // Assume approved if we can't check
+          tokensApproved = true;
+          approveBtn.style.display = "none";
+          fundBtn.style.display = "inline-block";
+        }
+        
         approveBtn.disabled = false;
       } catch (error) {
         statusEl.textContent = `Error: ${error.message}`;

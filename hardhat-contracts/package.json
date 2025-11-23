@@ -16,7 +16,8 @@
     "verify:sepolia": "hardhat verify --network sepolia",
     "console:base-sepolia": "hardhat console --network baseSepolia",
     "console:sepolia": "hardhat console --network sepolia",
-    "node": "hardhat node"
+    "node": "hardhat node",
+    "generate:standard-json": "node scripts/generate-standard-json.cjs"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",

@@ -383,11 +383,13 @@
             signer
           );
 
-          console.log('GitHub Bounty: Funding issue with amount:', amountWei.toString());
+          console.log('GitHub Bounty: Funding issue with amount:', BigInt(amountWei));
           console.log('GitHub Bounty: Owner:', owner);
           console.log('GitHub Bounty: Repo:', repo);
           console.log('GitHub Bounty: Issue number:', issueNumber);
-          const tx = await rewardDistributorContract.fundIssue(owner, repo, issueNumber, BigInt(amountWei));
+          console.log("FUNDING THE ISSUE NOW...");
+          console.log(rewardDistributorContract);
+          const tx = await rewardDistributorContract.fundIssue(owner, repo, 9, 10000);
           console.log('GitHub Bounty: Transaction:', tx);
           const receipt = await tx.wait();
 

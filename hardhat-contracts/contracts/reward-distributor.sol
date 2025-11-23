@@ -68,7 +68,7 @@ contract RewardDistributor {
         issueFunds[issueId] += amount;
 
         // Record funding in issue tracker
-        issueTracker.recordFunding(issueId, msg.sender, amount);
+        // issueTracker.recordFunding(issueId, msg.sender, amount);
 
         emit FundsDeposited(issueId, msg.sender, amount);
     }
@@ -91,7 +91,7 @@ contract RewardDistributor {
             issueNumber
         );
 
-        // Check if issue exists, register if not
+        //Check if issue exists, register if not
         (, , uint256 existingIssueNumber, , , ) = issueTracker.getIssue(
             issueId
         );
