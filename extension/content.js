@@ -1304,16 +1304,70 @@
 
     console.log("GitHub Bounty: Found Reopen button, creating Claim button...");
 
-    // création du bouton Claim
+    // Look for "New issue" button (same reference as sponsor button uses for consistent styling)
+    let newIssueButton = null;
+    
+    // Strategy 1: Look for "New issue" button in subnav/header (same as sponsor button)
+    const issuesHeader = document.querySelector(".subnav") ||
+      document.querySelector('[data-testid="issues-header"]') ||
+      document.querySelector(".d-flex.flex-items-center.flex-justify-between.mb-3") ||
+      document.querySelector(".d-flex.flex-justify-between.flex-items-center.mb-3");
+
+    if (issuesHeader) {
+      const buttons = issuesHeader.querySelectorAll('button, a[role="button"], a.btn');
+      for (const btn of buttons) {
+        const text = btn.textContent?.trim() || "";
+        const ariaLabel = btn.getAttribute("aria-label") || "";
+        const href = btn.getAttribute("href") || "";
+        if (
+          text === "New issue" ||
+          text === "New Issue" ||
+          ariaLabel.toLowerCase().includes("new issue") ||
+          (text.includes("New") && text.includes("issue")) ||
+          href.includes("/issues/new")
+        ) {
+          newIssueButton = btn;
+          break;
+        }
+      }
+    }
+
+    // Strategy 2: Search all buttons on the page for New issue button
+    if (!newIssueButton) {
+      const allButtons = document.querySelectorAll('button, a[role="button"], a.btn');
+      for (const btn of allButtons) {
+        const text = btn.textContent?.trim() || "";
+        const href = btn.getAttribute("href") || "";
+        if (
+          text === "New issue" ||
+          text === "New Issue" ||
+          (text.includes("New") && text.includes("issue")) ||
+          (href.includes("/issues/new") && text.trim() !== "")
+        ) {
+          const rect = btn.getBoundingClientRect();
+          if (rect.top < 800 && rect.top > 0) {
+            newIssueButton = btn;
+            break;
+          }
+        }
+      }
+    }
+
+    // création du bouton Claim - use same styling as sponsor button
     const claimButton = document.createElement("button");
     claimButton.id = "github-bounty-claim-btn";
     claimButton.type = "button";
     claimButton.textContent = "Claim reward";
-
-    // copie le style du bouton Reopen issue
-    copyButtonStyle(reopenButton, claimButton);
-
-    // un peu d'espace entre Claim et le groupe Reopen+menu
+    
+    // Use exact same styling approach as sponsor button (ensures same color)
+    if (newIssueButton) {
+      // Use copyButtonStyle to ensure all styles match exactly (including color)
+      copyButtonStyle(newIssueButton, claimButton);
+    } else {
+      // Fallback: use primary button style to match sponsor button color (same as sponsor button fallback)
+      claimButton.className = "btn btn-primary";
+    }
+    
     claimButton.style.marginRight = "8px";
 
     claimButton.addEventListener("click", handleClaimClick);
