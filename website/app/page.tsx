@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DollarSign, GitPullRequest, Trophy, Coins, Github, Target } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 
 export default function LandingPage() {
   return (
@@ -9,17 +10,19 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
               <span className="text-secondary-foreground font-bold text-xl">G</span>
             </div>
             <span className="text-2xl font-bold text-primary">GITHUNDER</span>
-          </div>
+          </Link>
           <div className="flex items-center gap-4">
             <Button variant="ghost">How It Works</Button>
             <Button variant="ghost">For Funders</Button>
             <Button variant="ghost">For Contributors</Button>
-            <Button>Launch App</Button>
+            <Link href="/login">
+              <Button>Launch App</Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -281,16 +284,20 @@ export default function LandingPage() {
             Join thousands of developers and companies using Githunder to build better software together.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-lg px-8 bg-secondary-foreground text-secondary hover:bg-secondary-foreground/90"
-            >
-              Start Adding Bounties
-            </Button>
-            <Button size="lg" className="text-lg px-8 bg-primary text-primary-foreground hover:bg-primary/90">
-              Browse Issues
-            </Button>
+            <Link href="/login">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-lg px-8 bg-secondary-foreground text-secondary hover:bg-secondary-foreground/90"
+              >
+                Start Adding Bounties
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button size="lg" className="text-lg px-8 bg-primary text-primary-foreground hover:bg-primary/90">
+                Browse Issues
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
