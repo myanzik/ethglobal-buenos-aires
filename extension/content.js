@@ -62,7 +62,14 @@
       return;
     }
 
-    console.log("GitHub Bounty: On issues list page, looking for New issue button");
+    // If on issue detail page, only show if issue is open
+    if (isIssueDetailPage()) {
+      if (!isIssueOpen()) {
+        // Issue is closed, don't show sponsor button
+        return;
+      }
+      // Issue is open, continue to add sponsor button
+    }
 
     let newIssueButton = null;
     let targetContainer = null;
@@ -1272,19 +1279,6 @@
       return;
     }
 
-    console.log("GitHub Bounty: On issue detail page, checking contributor status...");
-
-    // on vérifie que l'utilisateur est bien un contributeur du PR qui a fermé l'issue
-    const isContributor = await isCurrentUserContributor();
-    console.log("GitHub Bounty: Contributor check result:", isContributor);
-    
-    if (!isContributor) {
-      console.log("GitHub Bounty: User is not a contributor to the PR that closed this issue");
-      return;
-    }
-
-    console.log("GitHub Bounty: User is contributor, looking for Reopen button...");
-
     // on cherche le bouton "Reopen issue" (présent uniquement quand l'issue est close)
     const actionButtons = document.querySelectorAll(
       "form button, form summary, button, summary"
@@ -1344,7 +1338,7 @@
     }
 
     const login = currentUser.trim().toLowerCase();
-    console.log("GitHub Bounty: Checking if user is contributor:", login);
+    console.log("GitHub Bounty: Checking if user is contributor to closing PR:", login);
 
     // Find PRs that closed this issue
     const closingPRs = findClosingPRs();
@@ -1371,87 +1365,30 @@
           }
         }
 
-      // If we have PR URL but no author/contributors, try to fetch more details
-      if (prInfo.url && (!prInfo.author || prInfo.contributors.length === 0)) {
-        console.log("GitHub Bounty: PR data incomplete, trying to fetch from API");
-        const prData = await fetchPRData(prInfo.url);
-        if (prData) {
-          if (prData.author && prData.author.toLowerCase() === login) {
-            console.log("GitHub Bounty: Current user is PR author (from API)", login);
-            return true;
-          }
-          if (prData.contributors && prData.contributors.some(c => c.toLowerCase() === login)) {
-            console.log("GitHub Bounty: Current user is PR contributor (from API)", login);
-            return true;
+        // If we have PR URL but no author/contributors, try to fetch more details
+        if (prInfo.url && (!prInfo.author || prInfo.contributors.length === 0)) {
+          console.log("GitHub Bounty: PR data incomplete, trying to fetch from API");
+          const prData = await fetchPRData(prInfo.url);
+          if (prData) {
+            if (prData.author && prData.author.toLowerCase() === login) {
+              console.log("GitHub Bounty: Current user is PR author (from API)", login);
+              return true;
+            }
+            if (prData.contributors && prData.contributors.some(c => c.toLowerCase() === login)) {
+              console.log("GitHub Bounty: Current user is PR contributor (from API)", login);
+              return true;
+            }
           }
         }
       }
-      
-      // Also try the DOM-based check
-      if (prInfo.url) {
-        const isContributor = await checkPRContributors(prInfo.url, login);
-        if (isContributor) {
-          return true;
-        }
-      }
-      }
-    }
-
-    // Fallback: Check if user is a participant in the issue discussion
-    // This is useful if PR detection fails or if the user participated in the issue
-    console.log("GitHub Bounty: PR check failed, checking issue participation as fallback");
-    const isIssueParticipant = checkIssueParticipation(login);
-    if (isIssueParticipant) {
-      console.log("GitHub Bounty: User is a participant in the issue discussion", login);
-      return true;
     }
 
     console.log(
-      "GitHub Bounty: Current user is not a contributor to closing PRs or issue",
+      "GitHub Bounty: Current user is not a contributor to closing PRs",
       login,
       "PRs:",
       closingPRs
     );
-
-    return false;
-  }
-
-  // Check if user participated in the issue (author, commenter, etc.)
-  function checkIssueParticipation(userLogin) {
-    // Check if user is the issue author
-    const issueAuthor = document.querySelector(
-      ".timeline-comment-header-text .author, " +
-      ".js-issue-header .author, " +
-      "[data-testid='issue-author'] .author"
-    );
-    if (issueAuthor) {
-      const authorName = (issueAuthor.textContent || "").trim().toLowerCase();
-      if (authorName === userLogin) {
-        console.log("GitHub Bounty: User is issue author");
-        return true;
-      }
-    }
-
-    // Check if user has commented on the issue
-    const discussionRoot =
-      document.querySelector("#discussion_bucket") ||
-      document.querySelector(".js-discussion") ||
-      document;
-
-    const authorNodes = discussionRoot.querySelectorAll(
-      ".timeline-comment-header-text .author, " +
-      ".js-comment .author, " +
-      ".timeline-comment .author, " +
-      ".author"
-    );
-
-    for (const node of authorNodes) {
-      const name = (node.textContent || "").trim().toLowerCase();
-      if (name === userLogin) {
-        console.log("GitHub Bounty: User has commented on the issue");
-        return true;
-      }
-    }
 
     return false;
   }
@@ -1486,7 +1423,7 @@
         
         // Also check if the issue is closed and this PR is mentioned
         const issueState = document.querySelector('[data-testid="issue-state"]')?.textContent?.toLowerCase() || "";
-        const isIssueClosed = issueState.includes("closed") || document.querySelector('button:contains("Reopen")');
+        const isIssueClosed = issueState.includes("closed");
         
         if (isClosingEvent || isIssueClosed) {
           // Find PR links in this event
@@ -1582,8 +1519,6 @@
                 }
 
                 // Method 4: Look in the PR link itself or nearby text
-                // Sometimes the author is mentioned near the PR link
-                const linkText = link.textContent || "";
                 const linkParent = link.closest(".TimelineItem-body, .discussion-item, .Box");
                 if (linkParent) {
                   const parentText = linkParent.textContent || "";
@@ -1675,79 +1610,60 @@
           return;
         }
 
-        chrome.runtime.sendMessage(
-          {
-            type: "FETCH_PR_DATA",
-            owner,
-            repo,
-            prNumber,
-          },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.error("GitHub Bounty: Error fetching PR data:", chrome.runtime.lastError);
-              resolve(null);
-              return;
-            }
-
-            if (response && response.ok && response.prData) {
-              console.log("GitHub Bounty: Fetched PR data:", response.prData);
-              resolve(response.prData);
-            } else {
-              console.log("GitHub Bounty: Failed to fetch PR data:", response?.error);
-              resolve(null);
-            }
+        let resolved = false;
+        
+        // Timeout after 10 seconds
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            console.log("GitHub Bounty: PR data fetch timeout");
+            resolve(null);
           }
-        );
+        }, 10000);
 
-        // Timeout after 5 seconds
-        setTimeout(() => {
-          console.log("GitHub Bounty: PR data fetch timeout");
-          resolve(null);
-        }, 5000);
+        try {
+          chrome.runtime.sendMessage(
+            {
+              type: "FETCH_PR_DATA",
+              owner,
+              repo,
+              prNumber,
+            },
+            (response) => {
+              if (resolved) return; // Already resolved by timeout
+              
+              clearTimeout(timeout);
+              
+              if (chrome.runtime.lastError) {
+                console.error("GitHub Bounty: Error fetching PR data:", chrome.runtime.lastError.message);
+                resolved = true;
+                resolve(null);
+                return;
+              }
+
+              if (response && response.ok && response.prData) {
+                console.log("GitHub Bounty: Fetched PR data:", response.prData);
+                resolved = true;
+                resolve(response.prData);
+              } else {
+                console.log("GitHub Bounty: Failed to fetch PR data:", response?.error || "Unknown error");
+                resolved = true;
+                resolve(null);
+              }
+            }
+          );
+        } catch (error) {
+          clearTimeout(timeout);
+          if (!resolved) {
+            resolved = true;
+            console.error("GitHub Bounty: Error sending message:", error);
+            resolve(null);
+          }
+        }
       });
     } catch (error) {
       console.error("GitHub Bounty: Error in fetchPRData:", error);
       return null;
-    }
-  }
-
-  // Check if user is a contributor to a PR (async - may need to fetch PR page)
-  async function checkPRContributors(prUrl, userLogin) {
-    try {
-      // If it's a relative URL, make it absolute
-      let fullUrl = prUrl;
-      if (!prUrl.startsWith("http")) {
-        fullUrl = `https://github.com${prUrl}`;
-      }
-
-      // For now, we'll check the PR page if we can navigate to it
-      // But since we're in a content script, we can't easily fetch cross-origin
-      // So we'll rely on DOM parsing of the current page
-      
-      // If the PR is linked on this page, try to find more info
-      const prLink = document.querySelector(`a[href="${prUrl}"], a[href*="${prUrl.split('/').pop()}"]`);
-      if (prLink) {
-        const parent = prLink.closest(".Box-row, .js-navigation-item, .discussion-sidebar-item");
-        if (parent) {
-          // Look for author/contributor info near the link
-          const authorNodes = parent.querySelectorAll(
-            ".author, [data-hovercard-type='user'], .AvatarStack-item"
-          );
-          for (const node of authorNodes) {
-            const name = node.textContent?.trim() || 
-                        node.getAttribute("aria-label")?.trim() ||
-                        node.getAttribute("data-hovercard-url")?.match(/\/users\/([^\/]+)/)?.[1];
-            if (name && name.toLowerCase() === userLogin.toLowerCase()) {
-              return true;
-            }
-          }
-        }
-      }
-
-      return false;
-    } catch (error) {
-      console.error("GitHub Bounty: Error checking PR contributors:", error);
-      return false;
     }
   }
 
@@ -1764,23 +1680,257 @@
 
     const [, owner, repo, issueNumber] = match;
 
-    const payload = {
-      action: "claimReward",
+    const issueData = {
       owner,
       repo,
       issueNumber,
       url: issueUrl,
     };
 
-    console.log("GitHub Bounty: Claim reward clicked", payload);
+    console.log("GitHub Bounty: Claim reward clicked", issueData);
 
-    if (
-      typeof chrome !== "undefined" &&
-      chrome.runtime &&
-      chrome.runtime.sendMessage
-    ) {
-      chrome.runtime.sendMessage(payload);
+    // Show claim modal
+    showClaimModal(issueData);
+  }
+
+  // Show claim reward modal
+  function showClaimModal(issueData) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById("github-bounty-claim-modal");
+    if (existingModal) {
+      existingModal.remove();
     }
+
+    const modal = document.createElement("div");
+    modal.id = "github-bounty-claim-modal";
+    modal.className = "github-bounty-modal-overlay";
+
+    modal.innerHTML = `
+      <div class="github-bounty-modal-content">
+        <div class="github-bounty-modal-header">
+          <h3>Claim Reward</h3>
+          <button class="github-bounty-modal-close" id="claim-modal-close-btn">&times;</button>
+        </div>
+        <div class="github-bounty-modal-body">
+          <p class="github-bounty-modal-info">
+            <strong>Repository:</strong> ${issueData.owner}/${issueData.repo}<br>
+            <strong>Issue:</strong> #${issueData.issueNumber}
+          </p>
+          <div id="claim-pending-reward" class="github-bounty-balance"></div>
+          <div id="claim-status" class="github-bounty-status"></div>
+        </div>
+        <div class="github-bounty-modal-footer">
+          <button id="claim-modal-cancel-btn" class="github-bounty-btn-secondary">Cancel</button>
+          <button id="claim-modal-connect-btn" class="github-bounty-btn-primary">Connect Wallet</button>
+          <button id="claim-modal-claim-btn" class="github-bounty-btn-primary" style="display: none;">Claim Reward</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Modal event handlers
+    const closeBtn = modal.querySelector("#claim-modal-close-btn");
+    const cancelBtn = modal.querySelector("#claim-modal-cancel-btn");
+    const connectBtn = modal.querySelector("#claim-modal-connect-btn");
+    const claimBtn = modal.querySelector("#claim-modal-claim-btn");
+    const statusEl = modal.querySelector("#claim-status");
+    const pendingRewardEl = modal.querySelector("#claim-pending-reward");
+
+    let connectedAccount = null;
+
+    // Close modal
+    const closeModal = () => {
+      modal.remove();
+    };
+
+    closeBtn.addEventListener("click", closeModal);
+    cancelBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Connect wallet
+    connectBtn.addEventListener("click", async () => {
+      try {
+        connectBtn.disabled = true;
+        connectBtn.textContent = "Connecting...";
+        statusEl.textContent = "Connecting to MetaMask...";
+        statusEl.className = "github-bounty-status github-bounty-status-info";
+        statusEl.style.display = "block";
+
+        connectedAccount = await connectMetaMask();
+
+        statusEl.textContent = `Connected: ${connectedAccount.substring(
+          0,
+          6
+        )}...${connectedAccount.substring(38)}`;
+        statusEl.className =
+          "github-bounty-status github-bounty-status-success";
+
+        // Check pending reward
+        try {
+          const pendingReward = await getPendingReward(
+            connectedAccount,
+            issueData.owner,
+            issueData.repo,
+            parseInt(issueData.issueNumber)
+          );
+          if (pendingReward && pendingReward.amount > 0) {
+            pendingRewardEl.textContent = `Pending Reward: ${pendingReward.formatted} tokens`;
+            pendingRewardEl.style.display = "block";
+            claimBtn.style.display = "inline-block";
+          } else {
+            pendingRewardEl.textContent = "No pending reward available";
+            pendingRewardEl.style.display = "block";
+            claimBtn.style.display = "none";
+          }
+        } catch (err) {
+          console.error("Error fetching pending reward:", err);
+          pendingRewardEl.textContent = "Could not fetch pending reward";
+          pendingRewardEl.style.display = "block";
+          // Still show claim button in case of error
+          claimBtn.style.display = "inline-block";
+        }
+
+        connectBtn.style.display = "none";
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        connectBtn.disabled = false;
+        connectBtn.textContent = "Connect Wallet";
+      }
+    });
+
+    // Claim reward
+    claimBtn.addEventListener("click", async () => {
+      if (!connectedAccount) {
+        statusEl.textContent = "Please connect your wallet first";
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        return;
+      }
+
+      try {
+        claimBtn.disabled = true;
+        claimBtn.textContent = "Claiming...";
+        statusEl.textContent = "Claiming reward...";
+        statusEl.className = "github-bounty-status github-bounty-status-info";
+        statusEl.style.display = "block";
+
+        const result = await claimReward(
+          connectedAccount,
+          issueData.owner,
+          issueData.repo,
+          parseInt(issueData.issueNumber)
+        );
+
+        statusEl.innerHTML = `Reward claimed successfully! Transaction: <a href="https://sepolia.basescan.org/tx/${
+          result.txHash
+        }" target="_blank">${result.txHash.substring(0, 10)}...</a>`;
+        statusEl.className =
+          "github-bounty-status github-bounty-status-success";
+
+        claimBtn.textContent = "Claimed!";
+
+        // Close modal after 3 seconds
+        setTimeout(() => {
+          closeModal();
+        }, 3000);
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        claimBtn.disabled = false;
+        claimBtn.textContent = "Claim Reward";
+      }
+    });
+  }
+
+  // Get pending reward for a contributor
+  async function getPendingReward(account, owner, repo, issueNumber) {
+    await ensureEthersInjected();
+    await ensureInjectedScript();
+
+    return new Promise((resolve, reject) => {
+      const handler = (event) => {
+        if (event.data && event.data.type === "GITHUB_BOUNTY_PENDING_REWARD_RESULT") {
+          window.removeEventListener("message", handler);
+          if (event.data.error) {
+            reject(new Error(event.data.error));
+          } else {
+            resolve({
+              amount: event.data.amount,
+              formatted: event.data.formatted,
+            });
+          }
+        }
+      };
+      window.addEventListener("message", handler);
+
+      window.postMessage(
+        {
+          type: "GITHUB_BOUNTY_GET_PENDING_REWARD",
+          payload: {
+            account: account,
+            owner: owner,
+            repo: repo,
+            issueNumber: issueNumber,
+            rewardDistributorAddress: CONFIG.rewardDistributorAddress,
+          },
+        },
+        "*"
+      );
+
+      setTimeout(() => {
+        window.removeEventListener("message", handler);
+        reject(new Error("Pending reward fetch timeout"));
+      }, 30000);
+    });
+  }
+
+  // Claim reward using RewardDistributor contract
+  async function claimReward(account, owner, repo, issueNumber) {
+    await ensureEthersInjected();
+    await ensureInjectedScript();
+
+    return new Promise((resolve, reject) => {
+      const handler = (event) => {
+        if (event.data && event.data.type === "GITHUB_BOUNTY_CLAIM_RESULT") {
+          window.removeEventListener("message", handler);
+          if (event.data.error) {
+            reject(new Error(event.data.error));
+          } else {
+            resolve({
+              success: true,
+              txHash: event.data.txHash,
+              receipt: event.data.receipt,
+            });
+          }
+        }
+      };
+      window.addEventListener("message", handler);
+
+      window.postMessage(
+        {
+          type: "GITHUB_BOUNTY_CLAIM_REWARD",
+          payload: {
+            account: account,
+            owner: owner,
+            repo: repo,
+            issueNumber: issueNumber,
+            rewardDistributorAddress: CONFIG.rewardDistributorAddress,
+          },
+        },
+        "*"
+      );
+
+      setTimeout(() => {
+        window.removeEventListener("message", handler);
+        reject(new Error("Claim reward transaction timeout"));
+      }, 120000); // 2 minutes for transaction
+    });
   }
 
   // Wait for page to load and observe changes (GitHub uses dynamic content)
@@ -1864,6 +2014,58 @@
       setTimeout(init, 500);
     }
   }).observe(document, { subtree: true, childList: true });
+
+  // Check if issue is open
+  function isIssueOpen() {
+    // Check for "Closed" state indicator
+    const stateElement = document.querySelector('[data-testid="issue-state"]');
+    if (stateElement) {
+      const stateText = (stateElement.textContent || "").toLowerCase();
+      if (stateText.includes("closed")) {
+        return false;
+      }
+      if (stateText.includes("open")) {
+        return true;
+      }
+    }
+
+    // Check for state classes
+    const closedState = document.querySelector('.State--closed');
+    if (closedState) {
+      return false;
+    }
+
+    const openState = document.querySelector('.State--open');
+    if (openState) {
+      return true;
+    }
+
+    // Check for buttons
+    const allButtons = document.querySelectorAll('button, [role="button"]');
+    for (const btn of allButtons) {
+      const text = (btn.textContent || "").trim().toLowerCase();
+      if (text === "reopen issue" || text === "reopen") {
+        return false; // Issue is closed
+      }
+      if (text === "close issue" || text === "close") {
+        return true; // Issue is open
+      }
+    }
+
+    // Check for title attributes
+    const elementsWithTitle = document.querySelectorAll('[title*="Closed"], [title*="closed"]');
+    if (elementsWithTitle.length > 0) {
+      return false;
+    }
+
+    const elementsWithOpenTitle = document.querySelectorAll('[title*="Open"], [title*="open"]');
+    if (elementsWithOpenTitle.length > 0) {
+      return true;
+    }
+
+    // Default to open if we can't determine
+    return true;
+  }
 })();
 function isIssueDetailPage() {
   return /\/issues\/\d+/.test(location.pathname);

@@ -280,10 +280,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           },
         });
       } catch (e) {
-        console.error(e);
+        console.error("Error fetching PR data:", e);
         sendResponse({ ok: false, error: e.message });
       }
     })();
-    return true;
+    return true; // Important: return true to indicate async response
   }
 });
