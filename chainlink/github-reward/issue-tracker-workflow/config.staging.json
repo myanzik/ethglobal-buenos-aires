@@ -11,7 +11,7 @@
   "evms": [
     {
       "issueTrackerAddress": "0x0000000000000000000000000000000000000000",
-      "chainSelectorName": "ethereum-testnet-sepolia",
+      "chainSelectorName": "base-testnet-sepolia",
       "gasLimit": "500000"
     }
   ],
