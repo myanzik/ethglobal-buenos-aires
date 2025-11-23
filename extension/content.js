@@ -3,6 +3,17 @@
 (function () {
   "use strict";
 
+    const CONFIG = {
+    // Token contract address (USDC on Base Sepolia)
+    tokenAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    // RewardDistributor contract address (Base Sepolia)
+    rewardDistributorAddress: "0x1E7E44C86E65063a5ae3197a8A8fF87e254439cB",
+    // Chain ID for Base Sepolia testnet
+    chainId: "0x14a34", // 84532 in hex
+    chainName: "Base Sepolia",
+    rpcUrl: "https://sepolia.base.org", // Optional, MetaMask will use its own
+  };
+
   // Check if chrome.runtime is available
   if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.getURL) {
     console.error("GitHub Bounty: Extension runtime not available. Please reload the extension.");
@@ -427,16 +438,6 @@
   }
 
   // Contract configuration
-  const CONFIG = {
-    // Token contract address (USDC on Base Sepolia)
-    tokenAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-    // RewardDistributor contract address (Base Sepolia)
-    rewardDistributorAddress: "0xD916aC68e161a2221BA6616d3EE5864626007EBb",
-    // Chain ID for Base Sepolia testnet
-    chainId: "0x14a34", // 84532 in hex
-    chainName: "Base Sepolia",
-    rpcUrl: "https://sepolia.base.org", // Optional, MetaMask will use its own
-  };
 
   // ERC20 ABI (minimal - just what we need)
   const ERC20_ABI = [
