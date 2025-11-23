@@ -52,3 +52,214 @@
   cursor: not-allowed;
 }
 
+/* Modal Styles */
+.github-bounty-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.github-bounty-modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.github-bounty-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.github-bounty-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #24292f;
+}
+
+.github-bounty-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #656d76;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.github-bounty-modal-close:hover {
+  background-color: #f3f4f6;
+}
+
+.github-bounty-modal-body {
+  padding: 20px;
+}
+
+.github-bounty-modal-info {
+  margin: 0 0 20px 0;
+  padding: 12px;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #24292f;
+  line-height: 1.6;
+}
+
+.github-bounty-form-group {
+  margin-bottom: 16px;
+}
+
+.github-bounty-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #24292f;
+}
+
+.github-bounty-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.github-bounty-input:focus {
+  outline: none;
+  border-color: #0969da;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+.github-bounty-balance {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #656d76;
+  display: none;
+}
+
+.github-bounty-status {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+}
+
+.github-bounty-status:not(:empty) {
+  display: block;
+}
+
+.github-bounty-status-info {
+  background-color: #ddf4ff;
+  color: #0969da;
+  border: 1px solid #b6e3ff;
+}
+
+.github-bounty-status-success {
+  background-color: #dafbe1;
+  color: #1a7f37;
+  border: 1px solid #4ae970;
+}
+
+.github-bounty-status-error {
+  background-color: #ffebe9;
+  color: #cf222e;
+  border: 1px solid #ff8182;
+}
+
+.github-bounty-status a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.github-bounty-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid #e1e4e8;
+}
+
+.github-bounty-btn-primary,
+.github-bounty-btn-secondary {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.github-bounty-btn-primary {
+  background-color: #2da44e;
+  color: white;
+  border-color: #2da44e;
+}
+
+.github-bounty-btn-primary:hover:not(:disabled) {
+  background-color: #2c974b;
+  border-color: #2c974b;
+}
+
+.github-bounty-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.github-bounty-btn-secondary {
+  background-color: white;
+  color: #24292f;
+  border-color: #d1d9e0;
+}
+
+.github-bounty-btn-secondary:hover {
+  background-color: #f6f8fa;
+  border-color: #d1d9e0;
+}
+
