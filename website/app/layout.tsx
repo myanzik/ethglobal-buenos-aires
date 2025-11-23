@@ -1,11 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Dela_Gothic_One, M_PLUS_Rounded_1c } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-
-const _delaGothicOne = Dela_Gothic_One({ weight: "400", subsets: ["latin"] })
-const _mPlusRounded = M_PLUS_Rounded_1c({ weight: ["400", "700"], subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Githunder - Fight Bugs, Win Tokens",
@@ -38,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`font-sans antialiased ${_mPlusRounded.className}`}>
+      <body className="antialiased">
         {children}
         <Analytics />
       </body>
