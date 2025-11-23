@@ -1,0 +1,23 @@
+{
+  "schedule": "*/5 * * * *",
+  "githubApiUrl": "https://api.github.com",
+  "githubToken": "YOUR_GITHUB_TOKEN",
+  "repositories": [
+    {
+      "owner": "your-org",
+      "repo": "your-repo"
+    }
+  ],
+  "evms": [
+    {
+      "issueTrackerAddress": "0x0000000000000000000000000000000000000000",
+      "chainSelectorName": "ethereum-testnet-sepolia",
+      "gasLimit": "500000"
+    }
+  ],
+  "contributorMapping": {
+    "github-username-1": "0x1234567890123456789012345678901234567890",
+    "github-username-2": "0x0987654321098765432109876543210987654321"
+  }
+}
+
