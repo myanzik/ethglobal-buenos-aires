@@ -17,11 +17,16 @@
 # ==========================================================================
 staging-settings:
   rpcs:
-    - chain-name: ethereum-testnet-sepolia
-      url: https://ethereum-sepolia-rpc.publicnode.com
+    - chain-name: base-testnet-sepolia
+      url: https://sepolia.base.org
+    # Alternative RPC providers:
+    # - chain-name: base-testnet-sepolia
+    #   url: https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+    # - chain-name: base-testnet-sepolia
+    #   url: https://base-sepolia.infura.io/v3/YOUR_PROJECT_ID
 
 # ==========================================================================
 production-settings:
   rpcs:
-    - chain-name: ethereum-testnet-sepolia
-      url: https://ethereum-sepolia-rpc.publicnode.com
+    - chain-name: base-testnet-sepolia
+      url: https://sepolia.base.org
