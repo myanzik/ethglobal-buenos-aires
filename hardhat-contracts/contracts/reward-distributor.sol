@@ -55,11 +55,11 @@ contract RewardDistributor {
     function depositFunds(bytes32 issueId, uint256 amount) public {
         require(amount > 0, "Amount must be greater than 0");
 
-        // Check if issue exists, if not register it
-        (, , uint256 issueNumber, , , ) = issueTracker.getIssue(issueId);
-        if (issueNumber == 0) {
-            revert("Issue not registered. Please register issue first.");
-        }
+        // // Check if issue exists, if not register it
+        // (, , uint256 issueNumber, , , ) = issueTracker.getIssue(issueId);
+        // if (issueNumber == 0) {
+        //     revert("Issue not registered. Please register issue first.");
+        // }
 
         // Transfer tokens from funder to this contract
         rewardToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -68,7 +68,7 @@ contract RewardDistributor {
         issueFunds[issueId] += amount;
 
         // Record funding in issue tracker
-        issueTracker.recordFunding(issueId, msg.sender, amount);
+        // issueTracker.recordFunding(issueId, msg.sender, amount);
 
         emit FundsDeposited(issueId, msg.sender, amount);
     }
@@ -91,7 +91,7 @@ contract RewardDistributor {
             issueNumber
         );
 
-        // Check if issue exists, register if not
+        //Check if issue exists, register if not
         (, , uint256 existingIssueNumber, , , ) = issueTracker.getIssue(
             issueId
         );
@@ -173,9 +173,7 @@ contract RewardDistributor {
         }
 
         // Check if issue is closed
-        (, , , uint256 totalFunding, bool isClosed, ) = issueTracker.getIssue(
-            issueId
-        );
+        (, , , , bool isClosed, ) = issueTracker.getIssue(issueId);
         if (!isClosed) {
             return 0;
         }

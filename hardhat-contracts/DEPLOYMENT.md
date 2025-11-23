@@ -21,12 +21,28 @@ npx hardhat compile
 
 4. Set up your network configuration in `hardhat.config.ts`
 
-5. Set up environment variables (optional):
+5. Set up environment variables:
 ```bash
+# For Base Sepolia
+export BASE_SEPOLIA_RPC_URL="https://sepolia.base.org"
+export BASE_SEPOLIA_PRIVATE_KEY="your_private_key"
+
+# For Ethereum Sepolia
 export SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_KEY"
 export SEPOLIA_PRIVATE_KEY="your_private_key"
-export REWARD_TOKEN_ADDRESS="0x..." # Optional, defaults to test token
+
+# Optional: Override default reward token (defaults to USDC on Base Sepolia)
+export REWARD_TOKEN_ADDRESS="0x..." # Default: 0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04
 ```
+
+### Default Reward Token
+
+The deployment scripts use **USDC on Base Sepolia** as the default reward token:
+- **Address**: `0xAF33ADd7918F685B2A82C1077bd8c07d220FFA04`
+- **Token**: USDC (USD Coin)
+- **Network**: Base Sepolia
+
+You can override this by passing a different token address via parameters or environment variables.
 
 ## Deployment Methods
 
