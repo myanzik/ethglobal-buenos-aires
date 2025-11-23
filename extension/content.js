@@ -140,12 +140,12 @@
 
       console.log('GitHub Bounty: Sponsor clicked for issue', issueData);
       
-      // TODO: Open popup or modal to set bounty amount
-      // For now, show an alert
-      alert(`Sponsor Issue #${issueNumber} in ${owner}/${repo}\n\nThis will open the bounty funding interface.`);
-      
-      // You can also send a message to the background script or open the extension popup
-      // chrome.runtime.sendMessage({ action: 'sponsor', data: issueData });
+       chrome.runtime.sendMessage(
+      { type: 'OPEN_SPONSOR_FLOW', issue: issueData },
+      (response) => {
+        console.log('Contributors response', response);
+      }
+    );
     }
   }
 
