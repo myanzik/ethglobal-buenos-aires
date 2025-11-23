@@ -96,7 +96,7 @@ contract RewardDistributor {
             issueId
         );
         if (existingIssueNumber == 0) {
-            issueTracker.registerIssue(owner, repo, issueNumber);
+            issueTracker.registerIssue(owner, repo, issueNumber, amount);
         }
 
         // Deposit funds

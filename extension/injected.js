@@ -538,10 +538,11 @@
       // Claim reward
       if (type === 'GITHUB_BOUNTY_CLAIM_REWARD') {
         try {
-          const account = payload.account;
           const owner = payload.owner;
           const repo = payload.repo;
           const issueNumber = payload.issueNumber;
+          const wallet = payload.wallet;
+          const githubUsername = payload.githubUsername;
           const rewardDistributorAddress = payload.rewardDistributorAddress;
 
           // Load ethers if not available
@@ -560,23 +561,19 @@
           const provider = new ethers.BrowserProvider(window.ethereum);
           const signer = await provider.getSigner();
 
-          // RewardDistributor ABI for distributeReward
+          // RewardDistributor ABI for claimReward
           const rewardDistributorABI = [
             {
               inputs: [
-                { internalType: 'bytes32', name: 'issueId', type: 'bytes32' },
-                { internalType: 'address', name: 'contributor', type: 'address' }
+                { internalType: 'string', name: 'owner', type: 'string' },
+                { internalType: 'string', name: 'repo', type: 'string' },
+                { internalType: 'uint256', name: 'issueNumber', type: 'uint256' },
+                { internalType: 'address', name: 'wallet', type: 'address' },
+                { internalType: 'string', name: 'githubUsername', type: 'string' }
               ],
-              name: 'distributeReward',
+              name: 'claimReward',
               outputs: [],
               stateMutability: 'nonpayable',
-              type: 'function'
-            },
-            {
-              inputs: [],
-              name: 'issueTracker',
-              outputs: [{ internalType: 'address', name: '', type: 'address' }],
-              stateMutability: 'view',
               type: 'function'
             }
           ];
@@ -587,38 +584,21 @@
             signer
           );
 
-          // Get issueTracker address
-          const issueTrackerAddress = await rewardDistributorContract.issueTracker();
+          console.log('GitHub Bounty: Claiming reward');
+          console.log('GitHub Bounty: Owner:', owner);
+          console.log('GitHub Bounty: Repo:', repo);
+          console.log('GitHub Bounty: Issue Number:', issueNumber);
+          console.log('GitHub Bounty: Wallet:', wallet);
+          console.log('GitHub Bounty: GitHub Username:', githubUsername);
 
-          // IssueTracker ABI for generateIssueId
-          const issueTrackerABI = [
-            {
-              inputs: [
-                { internalType: 'string', name: 'owner', type: 'string' },
-                { internalType: 'string', name: 'repo', type: 'string' },
-                { internalType: 'uint256', name: 'issueNumber', type: 'uint256' }
-              ],
-              name: 'generateIssueId',
-              outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
-              stateMutability: 'pure',
-              type: 'function'
-            }
-          ];
-
-          const issueTrackerContract = new ethers.Contract(
-            issueTrackerAddress,
-            issueTrackerABI,
-            provider
+          // Call claimReward
+          const tx = await rewardDistributorContract.claimReward(
+            owner,
+            repo,
+            issueNumber,
+            wallet,
+            githubUsername
           );
-
-          // Generate issueId using the contract's pure function
-          const issueId = await issueTrackerContract.generateIssueId.staticCall(owner, repo, issueNumber);
-
-          console.log('GitHub Bounty: Claiming reward for issueId:', issueId);
-          console.log('GitHub Bounty: Contributor:', account);
-
-          // Call distributeReward
-          const tx = await rewardDistributorContract.distributeReward(issueId, account);
           console.log('GitHub Bounty: Transaction:', tx);
           const receipt = await tx.wait();
 

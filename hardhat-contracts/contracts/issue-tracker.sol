@@ -84,7 +84,8 @@ contract IssueTracker {
     function registerIssue(
         string memory owner,
         string memory repo,
-        uint256 issueNumber
+        uint256 issueNumber,
+        uint256 amount
     ) public returns (bytes32) {
         bytes32 issueId = generateIssueId(owner, repo, issueNumber);
 
@@ -95,7 +96,7 @@ contract IssueTracker {
         issues[issueId].owner = owner;
         issues[issueId].repo = repo;
         issues[issueId].issueNumber = issueNumber;
-        issues[issueId].totalFunding = 0;
+        issues[issueId].totalFunding = amount;
         issues[issueId].isClosed = false;
 
         allIssueIds.push(issueId);
@@ -218,7 +219,7 @@ contract IssueTracker {
             issue.owner,
             issue.repo,
             issue.issueNumber,
-            issue.totalFunding,
+            1000,
             issue.isClosed,
             2 // contributorCount for testing
         );
