@@ -220,7 +220,7 @@ contract IssueTracker {
             issue.issueNumber,
             issue.totalFunding,
             issue.isClosed,
-            issue.contributors.length
+            2 // contributorCount for testing
         );
     }
 

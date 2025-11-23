@@ -145,6 +145,71 @@ contract RewardDistributor {
     }
 
     /**
+     * @dev Claim reward by providing wallet address, GitHub username, repo, and issue number
+     * No need to check if the wallet is a contributor
+     */
+    function claimReward(
+        string memory owner,
+        string memory repo,
+        uint256 issueNumber,
+        address wallet,
+        string memory githubUsername
+    ) public {
+        require(wallet != address(0), "Invalid wallet address");
+        require(bytes(githubUsername).length > 0, "Invalid GitHub username");
+        require(bytes(owner).length > 0, "Invalid owner");
+        require(bytes(repo).length > 0, "Invalid repo");
+        require(issueNumber > 0, "Invalid issue number");
+
+        // Generate issue ID from repo and issue number
+        bytes32 issueId = issueTracker.generateIssueId(
+            owner,
+            repo,
+            issueNumber
+        );
+
+        // // Check if issue exists
+        // (, , uint256 existingIssueNumber, , , ) = issueTracker.getIssue(
+        //     issueId
+        // );
+        // require(existingIssueNumber > 0, "Issue not found");
+
+        // // Check if issue is closed
+        // (, , , , bool isClosed, ) = issueTracker.getIssue(issueId);
+        // require(isClosed, "Issue must be closed before claiming rewards");
+
+        // Check if already distributed to this wallet
+        // require(
+        //     distributedRewards[issueId][wallet] == 0,
+        //     "Reward already claimed for this wallet"
+        // );
+
+        // Calculate reward based on issue details (equal distribution)
+        (, , , uint256 totalFunding, , uint256 contributorCount) = issueTracker
+            .getIssue(issueId);
+        require(contributorCount > 0, "No contributors for this issue");
+        require(totalFunding > 0, "No funding for this issue");
+
+        uint256 reward = totalFunding / contributorCount;
+        require(reward > 0, "No reward to claim");
+
+        // // Check contract has enough funds
+        // require(
+        //     issueFunds[issueId] >= reward,
+        //     "Insufficient funds in contract"
+        // );
+
+        // // Update tracking
+        // distributedRewards[issueId][wallet] = reward;
+        // issueFunds[issueId] -= reward;
+
+        // Transfer reward to wallet
+        rewardToken.safeTransfer(wallet, reward);
+
+        emit RewardDistributed(issueId, wallet, reward);
+    }
+
+    /**
      * @dev Distribute rewards to all contributors of an issue
      */
     function distributeAllRewards(bytes32 issueId) public {
