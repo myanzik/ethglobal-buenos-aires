@@ -191,7 +191,7 @@ describe("RewardDistributor", function () {
 
     beforeEach(async function () {
       // Register issue
-      await issueTracker.connect(owner).registerIssue(OWNER, REPO, ISSUE_NUMBER);
+      await issueTracker.connect(owner).registerIssue(OWNER, REPO, ISSUE_NUMBER,fundingAmount);
       issueId = await issueTracker.generateIssueId(OWNER, REPO, ISSUE_NUMBER);
 
       // Add contributors
@@ -450,7 +450,7 @@ describe("RewardDistributor", function () {
     const fundingAmount = ethers.parseEther("1000");
 
     beforeEach(async function () {
-      await issueTracker.connect(owner).registerIssue(OWNER, REPO, ISSUE_NUMBER);
+      await issueTracker.connect(owner).registerIssue(OWNER, REPO, ISSUE_NUMBER,fundingAmount);
       issueId = await issueTracker.generateIssueId(OWNER, REPO, ISSUE_NUMBER);
 
       await issueTracker.addContributor(issueId, contributor1.address);
@@ -480,7 +480,7 @@ describe("RewardDistributor", function () {
     });
 
     it("Should return true for issue with no contributors", async function () {
-      await issueTracker.connect(owner).registerIssue(OWNER, REPO, 4n);
+      await issueTracker.connect(owner).registerIssue(OWNER, REPO, 4n, 2n);
       const newIssueId = await issueTracker.generateIssueId(OWNER, REPO, 4n);
 
       expect(

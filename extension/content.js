@@ -7,7 +7,7 @@
     // Token contract address (USDC on Base Sepolia)
     tokenAddress: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     // RewardDistributor contract address (Base Sepolia)
-    rewardDistributorAddress: "0x1E7E44C86E65063a5ae3197a8A8fF87e254439cB",
+    rewardDistributorAddress: "0x309a847f8b8f5AFF5D80e2A79208Fd09f6B34Ca7",
     // Chain ID for Base Sepolia testnet
     chainId: "0x14a34", // 84532 in hex
     chainName: "Base Sepolia",
@@ -1867,6 +1867,16 @@
         return;
       }
 
+      // Get GitHub username
+      const userMeta = document.querySelector('meta[name="user-login"]');
+      const githubUsername = userMeta ? userMeta.getAttribute("content") : "";
+      if (!githubUsername) {
+        statusEl.textContent = "Error: Could not detect GitHub username. Please make sure you're logged in to GitHub.";
+        statusEl.className = "github-bounty-status github-bounty-status-error";
+        statusEl.style.display = "block";
+        return;
+      }
+
       try {
         claimBtn.disabled = true;
         claimBtn.textContent = "Claiming...";
@@ -1875,10 +1885,11 @@
         statusEl.style.display = "block";
 
         const result = await claimReward(
-          connectedAccount,
           issueData.owner,
           issueData.repo,
-          parseInt(issueData.issueNumber)
+          parseInt(issueData.issueNumber),
+          connectedAccount,
+          githubUsername
         );
 
         statusEl.innerHTML = `Reward claimed successfully! Transaction: <a href="https://sepolia.basescan.org/tx/${
@@ -1946,7 +1957,7 @@
   }
 
   // Claim reward using RewardDistributor contract
-  async function claimReward(account, owner, repo, issueNumber) {
+  async function claimReward(owner, repo, issueNumber, wallet, githubUsername) {
     await ensureEthersInjected();
     await ensureInjectedScript();
 
@@ -1971,10 +1982,11 @@
         {
           type: "GITHUB_BOUNTY_CLAIM_REWARD",
           payload: {
-            account: account,
             owner: owner,
             repo: repo,
             issueNumber: issueNumber,
+            wallet: wallet,
+            githubUsername: githubUsername,
             rewardDistributorAddress: CONFIG.rewardDistributorAddress,
           },
         },
