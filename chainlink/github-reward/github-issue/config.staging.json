@@ -1,6 +1,11 @@
 {
   "schedule": "*/30 * * * * *",
   "url": "https://api.real-time-reserves.verinumus.io/v1/chainlink/proof-of-reserves/TrueUSD",
+  "github": {
+    "owner": "myanzik",
+    "repo": "ethglobal-buenos-aires",
+    "issueNumber": 1
+  },
   "evms": [
     {
       "tokenAddress": "0x4700A50d858Cb281847ca4Ee0938F80DEfB3F1dd",
