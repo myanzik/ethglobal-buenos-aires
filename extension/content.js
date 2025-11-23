@@ -47,13 +47,22 @@
 
   // Function to find the New issue button and add Sponsor button next to it
   function addSponsorButton() {
-    if (isIssueDetailPage()) {
-      return;
-    }
+    console.log("GitHub Bounty: addSponsorButton called");
+    
     // Check if Sponsor button already exists
     if (document.getElementById("github-bounty-sponsor-btn")) {
+      console.log("GitHub Bounty: Sponsor button already exists");
       return;
     }
+
+    // If we're on an issue detail page, add sponsor button there (only for open issues)
+    if (isIssueDetailPage()) {
+      console.log("GitHub Bounty: On issue detail page, adding sponsor button");
+      addSponsorButtonToIssuePage();
+      return;
+    }
+
+    console.log("GitHub Bounty: On issues list page, looking for New issue button");
 
     let newIssueButton = null;
     let targetContainer = null;
@@ -197,6 +206,217 @@
     console.log(
       "GitHub Bounty: Sponsor button added successfully next to New issue button!"
     );
+  }
+
+  // Add Sponsor button to issue detail page (only for open issues)
+  function addSponsorButtonToIssuePage() {
+    // Check if issue is open
+    if (!isIssueOpen()) {
+      console.log("GitHub Bounty: Issue is closed, not showing sponsor button");
+      return;
+    }
+
+    console.log("GitHub Bounty: Adding sponsor button to open issue page");
+
+    // First, try to find a "New Issue" button or similar navigation button
+    let newIssueButton = null;
+    let targetContainer = null;
+
+    // Strategy 1: Look for "New Issue" button in the header/navigation area
+    const header = document.querySelector(".gh-header, .repository-content, .Layout-main");
+    if (header) {
+      const buttons = header.querySelectorAll('a[href*="/issues/new"], button, a[role="button"], a.btn');
+      for (const btn of buttons) {
+        const text = (btn.textContent || "").trim().toLowerCase();
+        const href = btn.getAttribute("href") || "";
+        const ariaLabel = btn.getAttribute("aria-label") || "";
+        if (
+          text === "new issue" ||
+          (text.includes("new") && text.includes("issue")) ||
+          ariaLabel.toLowerCase().includes("new issue") ||
+          href.includes("/issues/new")
+        ) {
+          newIssueButton = btn;
+          targetContainer = btn.parentElement;
+          console.log("GitHub Bounty: Found New Issue button on issue page");
+          break;
+        }
+      }
+    }
+
+    // Strategy 2: Look in the subnav or issues header area
+    if (!newIssueButton) {
+      const subnav = document.querySelector(".subnav, [data-testid='issues-header']");
+      if (subnav) {
+        const buttons = subnav.querySelectorAll('a[href*="/issues/new"], button, a[role="button"], a.btn');
+        for (const btn of buttons) {
+          const text = (btn.textContent || "").trim().toLowerCase();
+          const href = btn.getAttribute("href") || "";
+          if (
+            text === "new issue" ||
+            (text.includes("new") && text.includes("issue")) ||
+            href.includes("/issues/new")
+          ) {
+            newIssueButton = btn;
+            targetContainer = btn.parentElement;
+            console.log("GitHub Bounty: Found New Issue button in subnav");
+            break;
+          }
+        }
+      }
+    }
+
+    // Strategy 3: Search all links/buttons on the page
+    if (!newIssueButton) {
+      const allLinks = document.querySelectorAll('a[href*="/issues/new"], button, a[role="button"]');
+      for (const link of allLinks) {
+        const text = (link.textContent || "").trim().toLowerCase();
+        const href = link.getAttribute("href") || "";
+        if (
+          text === "new issue" ||
+          (text.includes("new") && text.includes("issue")) ||
+          href.includes("/issues/new")
+        ) {
+          const rect = link.getBoundingClientRect();
+          if (rect.top < 800 && rect.top > 0) {
+            newIssueButton = link;
+            targetContainer = link.parentElement;
+            console.log("GitHub Bounty: Found New Issue button in page");
+            break;
+          }
+        }
+      }
+    }
+
+    // If no "New Issue" button found, look for the issue actions area
+    if (!newIssueButton) {
+      let issueActions = document.querySelector(".gh-header-actions");
+      
+      if (!issueActions) {
+        // Try finding the header area with action buttons
+        const header = document.querySelector(".gh-header");
+        if (header) {
+          issueActions = header.querySelector(".flex-shrink-0, .d-flex");
+        }
+      }
+
+      if (!issueActions) {
+        // Look for any container with "Close issue" button
+        const closeButton = Array.from(document.querySelectorAll("button")).find(
+          btn => (btn.textContent || "").trim().toLowerCase().includes("close issue")
+        );
+        if (closeButton) {
+          issueActions = closeButton.parentElement;
+          newIssueButton = closeButton; // Use close button as reference
+        }
+      }
+
+      if (issueActions) {
+        targetContainer = issueActions;
+        // Use first button as reference for styling
+        newIssueButton = issueActions.querySelector("button, .btn");
+      }
+    }
+
+    if (!targetContainer) {
+      console.log("GitHub Bounty: Could not find target container for sponsor button");
+      return;
+    }
+
+    // Look for existing buttons to match style
+    const existingButton = newIssueButton || targetContainer.querySelector("button, .btn");
+    
+    // Create Sponsor button
+    const sponsorButton = document.createElement("button");
+    sponsorButton.id = "github-bounty-sponsor-btn";
+    sponsorButton.textContent = "Sponsor";
+    sponsorButton.setAttribute("type", "button");
+    sponsorButton.style.marginRight = "8px";
+
+    // Copy style from existing button if available
+    if (existingButton) {
+      copyButtonStyle(existingButton, sponsorButton);
+    } else {
+      // Default styling
+      sponsorButton.className = "btn btn-primary";
+    }
+
+    // Add click handler
+    sponsorButton.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSponsorClick();
+    });
+
+    // Insert the button right after the New Issue button (matching list page behavior)
+    if (newIssueButton) {
+      if (newIssueButton.nextSibling) {
+        newIssueButton.parentNode.insertBefore(
+          sponsorButton,
+          newIssueButton.nextSibling
+        );
+      } else {
+        newIssueButton.parentNode.insertBefore(sponsorButton, newIssueButton);
+      }
+    } else {
+      // Insert at the beginning if no reference button found
+      targetContainer.insertBefore(sponsorButton, targetContainer.firstChild);
+    }
+
+    console.log("GitHub Bounty: Sponsor button added to issue page!");
+  }
+
+  // Check if issue is open
+  function isIssueOpen() {
+    // Check for "Closed" state indicator
+    const stateElement = document.querySelector('[data-testid="issue-state"]');
+    if (stateElement) {
+      const stateText = (stateElement.textContent || "").toLowerCase();
+      if (stateText.includes("closed")) {
+        return false;
+      }
+      if (stateText.includes("open")) {
+        return true;
+      }
+    }
+
+    // Check for state classes
+    const closedState = document.querySelector('.State--closed');
+    if (closedState) {
+      return false;
+    }
+
+    const openState = document.querySelector('.State--open');
+    if (openState) {
+      return true;
+    }
+
+    // Check for buttons
+    const allButtons = document.querySelectorAll('button, [role="button"]');
+    for (const btn of allButtons) {
+      const text = (btn.textContent || "").trim().toLowerCase();
+      if (text === "reopen issue" || text === "reopen") {
+        return false; // Issue is closed
+      }
+      if (text === "close issue" || text === "close") {
+        return true; // Issue is open
+      }
+    }
+
+    // Check for title attributes
+    const elementsWithTitle = document.querySelectorAll('[title*="Closed"], [title*="closed"]');
+    if (elementsWithTitle.length > 0) {
+      return false;
+    }
+
+    const elementsWithOpenTitle = document.querySelectorAll('[title*="Open"], [title*="open"]');
+    if (elementsWithOpenTitle.length > 0) {
+      return true;
+    }
+
+    // Default to open if we can't determine (safer for sponsor button)
+    console.log("GitHub Bounty: Could not determine issue state, defaulting to open");
+    return true;
   }
 
   // Contract configuration
@@ -1037,22 +1257,33 @@
   }
 
   // Ajoute le bouton "Claim reward" à gauche de "Reopen issue"
-  function addClaimButton() {
+  async function addClaimButton() {
+    console.log("GitHub Bounty: addClaimButton called");
+    
     // pas de doublon
     if (document.getElementById("github-bounty-claim-btn")) {
+      console.log("GitHub Bounty: Claim button already exists");
       return;
     }
 
     // seulement sur une page d'issue
     if (!/\/issues\/\d+/.test(location.pathname)) {
+      console.log("GitHub Bounty: Not on an issue detail page:", location.pathname);
       return;
     }
 
-    // on vérifie que l'utilisateur est bien un contributeur
-    if (!isCurrentUserContributor()) {
-      console.log("GitHub Bounty: User is not a contributor for this issue");
+    console.log("GitHub Bounty: On issue detail page, checking contributor status...");
+
+    // on vérifie que l'utilisateur est bien un contributeur du PR qui a fermé l'issue
+    const isContributor = await isCurrentUserContributor();
+    console.log("GitHub Bounty: Contributor check result:", isContributor);
+    
+    if (!isContributor) {
+      console.log("GitHub Bounty: User is not a contributor to the PR that closed this issue");
       return;
     }
+
+    console.log("GitHub Bounty: User is contributor, looking for Reopen button...");
 
     // on cherche le bouton "Reopen issue" (présent uniquement quand l'issue est close)
     const actionButtons = document.querySelectorAll(
@@ -1073,8 +1304,11 @@
       console.log(
         "GitHub Bounty: Reopen issue button not found -> issue not closed, no Claim button"
       );
+      console.log("GitHub Bounty: Available buttons:", Array.from(actionButtons).slice(0, 5).map(b => b.textContent?.trim()));
       return;
     }
+
+    console.log("GitHub Bounty: Found Reopen button, creating Claim button...");
 
     // création du bouton Claim
     const claimButton = document.createElement("button");
@@ -1100,8 +1334,8 @@
     console.log("GitHub Bounty: Claim button added successfully");
   }
 
-  // Retourne true si l'utilisateur courant a participé à l'issue (auteur ou commentaire)
-  function isCurrentUserContributor() {
+  // Retourne true si l'utilisateur courant a participé au PR qui a fermé l'issue
+  async function isCurrentUserContributor() {
     const userMeta = document.querySelector('meta[name="user-login"]');
     const currentUser = userMeta ? userMeta.getAttribute("content") : null;
     if (!currentUser) {
@@ -1110,8 +1344,95 @@
     }
 
     const login = currentUser.trim().toLowerCase();
+    console.log("GitHub Bounty: Checking if user is contributor:", login);
 
-    // On limite la recherche à la discussion principale
+    // Find PRs that closed this issue
+    const closingPRs = findClosingPRs();
+    console.log("GitHub Bounty: Found closing PRs:", closingPRs);
+    
+    // If we found PRs, check if user is a contributor
+    if (closingPRs.length > 0) {
+      // Check if current user is a contributor to any of the closing PRs
+      for (const prInfo of closingPRs) {
+        console.log("GitHub Bounty: Checking PR:", prInfo);
+        
+        // Check PR author
+        if (prInfo.author && prInfo.author.toLowerCase() === login) {
+          console.log("GitHub Bounty: Current user is PR author", login);
+          return true;
+        }
+
+        // Check PR contributors (committers, reviewers)
+        if (prInfo.contributors && prInfo.contributors.length > 0) {
+          console.log("GitHub Bounty: PR contributors:", prInfo.contributors);
+          if (prInfo.contributors.some(c => c.toLowerCase() === login)) {
+            console.log("GitHub Bounty: Current user is PR contributor", login);
+            return true;
+          }
+        }
+
+      // If we have PR URL but no author/contributors, try to fetch more details
+      if (prInfo.url && (!prInfo.author || prInfo.contributors.length === 0)) {
+        console.log("GitHub Bounty: PR data incomplete, trying to fetch from API");
+        const prData = await fetchPRData(prInfo.url);
+        if (prData) {
+          if (prData.author && prData.author.toLowerCase() === login) {
+            console.log("GitHub Bounty: Current user is PR author (from API)", login);
+            return true;
+          }
+          if (prData.contributors && prData.contributors.some(c => c.toLowerCase() === login)) {
+            console.log("GitHub Bounty: Current user is PR contributor (from API)", login);
+            return true;
+          }
+        }
+      }
+      
+      // Also try the DOM-based check
+      if (prInfo.url) {
+        const isContributor = await checkPRContributors(prInfo.url, login);
+        if (isContributor) {
+          return true;
+        }
+      }
+      }
+    }
+
+    // Fallback: Check if user is a participant in the issue discussion
+    // This is useful if PR detection fails or if the user participated in the issue
+    console.log("GitHub Bounty: PR check failed, checking issue participation as fallback");
+    const isIssueParticipant = checkIssueParticipation(login);
+    if (isIssueParticipant) {
+      console.log("GitHub Bounty: User is a participant in the issue discussion", login);
+      return true;
+    }
+
+    console.log(
+      "GitHub Bounty: Current user is not a contributor to closing PRs or issue",
+      login,
+      "PRs:",
+      closingPRs
+    );
+
+    return false;
+  }
+
+  // Check if user participated in the issue (author, commenter, etc.)
+  function checkIssueParticipation(userLogin) {
+    // Check if user is the issue author
+    const issueAuthor = document.querySelector(
+      ".timeline-comment-header-text .author, " +
+      ".js-issue-header .author, " +
+      "[data-testid='issue-author'] .author"
+    );
+    if (issueAuthor) {
+      const authorName = (issueAuthor.textContent || "").trim().toLowerCase();
+      if (authorName === userLogin) {
+        console.log("GitHub Bounty: User is issue author");
+        return true;
+      }
+    }
+
+    // Check if user has commented on the issue
     const discussionRoot =
       document.querySelector("#discussion_bucket") ||
       document.querySelector(".js-discussion") ||
@@ -1119,32 +1440,315 @@
 
     const authorNodes = discussionRoot.querySelectorAll(
       ".timeline-comment-header-text .author, " +
-        ".js-comment .author, " +
-        ".timeline-comment .author, " +
-        ".author"
+      ".js-comment .author, " +
+      ".timeline-comment .author, " +
+      ".author"
     );
 
-    const seen = new Set();
     for (const node of authorNodes) {
       const name = (node.textContent || "").trim().toLowerCase();
-      if (!name) continue;
-      seen.add(name);
-      if (name === login) {
-        console.log("GitHub Bounty: current user is contributor", login);
+      if (name === userLogin) {
+        console.log("GitHub Bounty: User has commented on the issue");
         return true;
       }
     }
 
-    console.log(
-      "GitHub Bounty: current user not found among authors",
-      login,
-      "authors:",
-      Array.from(seen)
+    return false;
+  }
+
+  // Find PRs that closed this issue from the DOM
+  function findClosingPRs() {
+    const prs = [];
+    
+    // Look for timeline events that mention PRs closing the issue
+    const timelineEvents = document.querySelectorAll(
+      ".TimelineItem, .js-timeline-item, [data-testid='timeline-item'], .discussion-item"
     );
 
-    // Fallback pour le hackathon: si on est connecté et que l'issue est fermée,
-    // on autorise quand même le bouton afin de ne pas bloquer l'UX
-    return true;
+    for (const event of timelineEvents) {
+      const text = (event.textContent || "").toLowerCase();
+      
+      // Find PR links first - they might be in any timeline event
+      const prLinks = event.querySelectorAll('a[href*="/pull/"]');
+      
+      // If we found PR links, check if this is a closing event
+      if (prLinks.length > 0) {
+        // Look for "closed by", "merged", "fixes", "closes" messages with PR links
+        const isClosingEvent = (
+          text.includes("closed by") ||
+          text.includes("closed") ||
+          text.includes("merged") ||
+          text.includes("merges") ||
+          (text.includes("fixes") && text.includes("#")) ||
+          (text.includes("closes") && text.includes("#")) ||
+          (text.includes("resolves") && text.includes("#"))
+        );
+        
+        // Also check if the issue is closed and this PR is mentioned
+        const issueState = document.querySelector('[data-testid="issue-state"]')?.textContent?.toLowerCase() || "";
+        const isIssueClosed = issueState.includes("closed") || document.querySelector('button:contains("Reopen")');
+        
+        if (isClosingEvent || isIssueClosed) {
+          // Find PR links in this event
+          for (const link of prLinks) {
+            const href = link.getAttribute("href");
+            if (href && /\/pull\/\d+/.test(href)) {
+              const prMatch = href.match(/\/pull\/(\d+)/);
+              if (prMatch) {
+                const prNumber = prMatch[1];
+                
+                // Try to find PR author and contributors in the event
+                let author = null;
+                const contributors = [];
+                
+                // Method 1: Look for author in various places in the event
+                const authorSelectors = [
+                  ".author",
+                  "[data-testid='author-name']",
+                  ".Link--primary",
+                  ".timeline-comment-header-text .author",
+                  "[data-hovercard-type='user']",
+                  ".opened-by .author",
+                  ".TimelineItem-body .author"
+                ];
+                
+                for (const selector of authorSelectors) {
+                  const authorNodes = event.querySelectorAll(selector);
+                  for (const authorNode of authorNodes) {
+                    const text = authorNode.textContent?.trim();
+                    const hovercardUrl = authorNode.getAttribute("data-hovercard-url");
+                    const ariaLabel = authorNode.getAttribute("aria-label");
+                    
+                    let username = null;
+                    if (hovercardUrl) {
+                      const match = hovercardUrl.match(/\/users\/([^\/]+)/);
+                      if (match) username = match[1];
+                    } else if (text) {
+                      // Remove @ symbol if present
+                      username = text.replace(/^@/, "").trim();
+                    } else if (ariaLabel) {
+                      username = ariaLabel.replace(/^@/, "").trim();
+                    }
+                    
+                    if (username && !author) {
+                      author = username;
+                    } else if (username && username !== author && !contributors.includes(username)) {
+                      contributors.push(username);
+                    }
+                  }
+                }
+
+                // Method 2: Look for user links and extract usernames
+                const userLinks = event.querySelectorAll('a[data-hovercard-type="user"], a[href*="/"]');
+                for (const userLink of userLinks) {
+                  const href = userLink.getAttribute("href");
+                  const hovercardUrl = userLink.getAttribute("data-hovercard-url");
+                  
+                  let username = null;
+                  if (hovercardUrl) {
+                    const match = hovercardUrl.match(/\/users\/([^\/]+)/);
+                    if (match) username = match[1];
+                  } else if (href && href.includes("/")) {
+                    // Extract from href like /username or /users/username
+                    const match = href.match(/\/(?:users\/)?([^\/]+)(?:\/|$)/);
+                    if (match && !match[1].match(/^(pull|issues|pulls|settings|orgs)/)) {
+                      username = match[1];
+                    }
+                  }
+                  
+                  if (username && !author) {
+                    author = username;
+                  } else if (username && username !== author && !contributors.includes(username)) {
+                    contributors.push(username);
+                  }
+                }
+
+                // Method 3: Look for avatars and extract from alt/title attributes
+                const avatarNodes = event.querySelectorAll(
+                  ".AvatarStack-item img, [data-hovercard-type='user'] img, .avatar img, img.avatar"
+                );
+                for (const node of avatarNodes) {
+                  const alt = node.getAttribute("alt") || "";
+                  const title = node.getAttribute("title") || "";
+                  const name = alt.replace(/^@/, "").trim() || title.replace(/^@/, "").trim();
+                  
+                  if (name) {
+                    if (!author) {
+                      author = name;
+                    } else if (name !== author && !contributors.includes(name)) {
+                      contributors.push(name);
+                    }
+                  }
+                }
+
+                // Method 4: Look in the PR link itself or nearby text
+                // Sometimes the author is mentioned near the PR link
+                const linkText = link.textContent || "";
+                const linkParent = link.closest(".TimelineItem-body, .discussion-item, .Box");
+                if (linkParent) {
+                  const parentText = linkParent.textContent || "";
+                  // Look for patterns like "by @username" or "opened by username"
+                  const byMatch = parentText.match(/(?:by|opened by|merged by)\s+@?([a-zA-Z0-9_-]+)/i);
+                  if (byMatch && byMatch[1]) {
+                    const username = byMatch[1].toLowerCase();
+                    if (!author) {
+                      author = username;
+                    } else if (username !== author && !contributors.includes(username)) {
+                      contributors.push(username);
+                    }
+                  }
+                }
+                
+                console.log("GitHub Bounty: Extracted PR info from DOM:", {
+                  prNumber,
+                  author,
+                  contributors,
+                  eventText: (event.textContent || "").substring(0, 200)
+                });
+
+                prs.push({
+                  number: prNumber,
+                  url: href.startsWith("http") ? href : `https://github.com${href}`,
+                  author: author,
+                  contributors: contributors,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Also check for linked PRs in the sidebar or issue header
+    const linkedPRs = document.querySelectorAll('a[href*="/pull/"]');
+    for (const link of linkedPRs) {
+      const href = link.getAttribute("href");
+      if (href && /\/pull\/\d+/.test(href)) {
+        const prMatch = href.match(/\/pull\/(\d+)/);
+        if (prMatch) {
+          const prNumber = prMatch[1];
+          
+          // Check if this PR is already in our list
+          if (!prs.some(p => p.number === prNumber)) {
+            // Try to find author from link context
+            let author = null;
+            const parent = link.closest(".Box-row, .js-navigation-item, .discussion-sidebar-item");
+            if (parent) {
+              const authorNode = parent.querySelector(".author, [data-hovercard-type='user']");
+              if (authorNode) {
+                author = authorNode.textContent?.trim() || 
+                        authorNode.getAttribute("data-hovercard-url")?.match(/\/users\/([^\/]+)/)?.[1];
+              }
+            }
+
+            prs.push({
+              number: prNumber,
+              url: href.startsWith("http") ? href : `https://github.com${href}`,
+              author: author,
+              contributors: [],
+            });
+          }
+        }
+      }
+    }
+
+    return prs;
+  }
+
+  // Fetch PR data from GitHub API via background script
+  async function fetchPRData(prUrl) {
+    try {
+      // Extract owner, repo, and PR number from URL
+      const match = prUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/);
+      if (!match) {
+        console.error("GitHub Bounty: Invalid PR URL:", prUrl);
+        return null;
+      }
+
+      const [, owner, repo, prNumber] = match;
+
+      // Request PR data from background script
+      return new Promise((resolve) => {
+        if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.sendMessage) {
+          console.error("GitHub Bounty: chrome.runtime not available");
+          resolve(null);
+          return;
+        }
+
+        chrome.runtime.sendMessage(
+          {
+            type: "FETCH_PR_DATA",
+            owner,
+            repo,
+            prNumber,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error("GitHub Bounty: Error fetching PR data:", chrome.runtime.lastError);
+              resolve(null);
+              return;
+            }
+
+            if (response && response.ok && response.prData) {
+              console.log("GitHub Bounty: Fetched PR data:", response.prData);
+              resolve(response.prData);
+            } else {
+              console.log("GitHub Bounty: Failed to fetch PR data:", response?.error);
+              resolve(null);
+            }
+          }
+        );
+
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          console.log("GitHub Bounty: PR data fetch timeout");
+          resolve(null);
+        }, 5000);
+      });
+    } catch (error) {
+      console.error("GitHub Bounty: Error in fetchPRData:", error);
+      return null;
+    }
+  }
+
+  // Check if user is a contributor to a PR (async - may need to fetch PR page)
+  async function checkPRContributors(prUrl, userLogin) {
+    try {
+      // If it's a relative URL, make it absolute
+      let fullUrl = prUrl;
+      if (!prUrl.startsWith("http")) {
+        fullUrl = `https://github.com${prUrl}`;
+      }
+
+      // For now, we'll check the PR page if we can navigate to it
+      // But since we're in a content script, we can't easily fetch cross-origin
+      // So we'll rely on DOM parsing of the current page
+      
+      // If the PR is linked on this page, try to find more info
+      const prLink = document.querySelector(`a[href="${prUrl}"], a[href*="${prUrl.split('/').pop()}"]`);
+      if (prLink) {
+        const parent = prLink.closest(".Box-row, .js-navigation-item, .discussion-sidebar-item");
+        if (parent) {
+          // Look for author/contributor info near the link
+          const authorNodes = parent.querySelectorAll(
+            ".author, [data-hovercard-type='user'], .AvatarStack-item"
+          );
+          for (const node of authorNodes) {
+            const name = node.textContent?.trim() || 
+                        node.getAttribute("aria-label")?.trim() ||
+                        node.getAttribute("data-hovercard-url")?.match(/\/users\/([^\/]+)/)?.[1];
+            if (name && name.toLowerCase() === userLogin.toLowerCase()) {
+              return true;
+            }
+          }
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error("GitHub Bounty: Error checking PR contributors:", error);
+      return false;
+    }
   }
 
   function handleClaimClick() {
@@ -1189,7 +1793,7 @@
 
     // Bouton Claim uniquement sur une page d'issue
     if (isIssueDetailPage()) {
-      addClaimButton();
+      addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
     }
 
     const observer = new MutationObserver(function () {
@@ -1200,7 +1804,7 @@
         isIssueDetailPage() &&
         !document.getElementById("github-bounty-claim-btn")
       ) {
-        addClaimButton();
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
       }
     });
 
@@ -1212,23 +1816,33 @@
     // Plusieurs essais différés
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 500);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 1000);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 2000);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 3000);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 5000);
   }
 
