@@ -1,5 +1,5 @@
-const GITHUB_CLIENT_ID = "SomETHing";
-const GITHUB_CLIENT_SECRET = "SomETHing";
+const GITHUB_CLIENT_ID = "Ov23liCjRBayFxDoDmeN";
+const GITHUB_CLIENT_SECRET = "c5d9a7489171bdf70f34f649e78e7d3f97f51f1f";
 const GITHUB_SCOPES = ["read:user", "repo"].join(" ");
 
 function getRedirectUrl() {
@@ -104,22 +104,103 @@ async function startGitHubOAuth() {
 
   await chrome.storage.local.set({
     githubUser: user,
-    githubAccessToken: accessToken
+    githubToken: accessToken
   });
 
   return user;
 }
 
+async function fetchIssueContributors(owner, repo, issueNumber, token) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+  };
+
+  const contributors = new Map();
+  const addUser = (user) => {
+    if (!user || !user.login) return;
+    const count = contributors.get(user.login) ?? 0;
+    contributors.set(user.login, count + 1);
+  };
+
+  // Pimary issue
+  const issueResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+    { headers },
+  );
+  if (!issueResp.ok) {
+    throw new Error(`GitHub issue error: ${issueResp.status}`);
+  }
+  const issue = await issueResp.json();
+  addUser(issue.user);
+
+  // Issue comment
+  const commentsResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+    { headers },
+  );
+  if (!commentsResp.ok) {
+    throw new Error(`GitHub comments error: ${commentsResp.status}`);
+  }
+  const comments = await commentsResp.json();
+  comments.forEach((c) => addUser(c.user));
+
+  // So add author, if a PR
+  if (issue.pull_request) {
+    const prResp = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${issueNumber}`,
+      { headers },
+    );
+    if (prResp.ok) {
+      const pr = await prResp.json();
+      addUser(pr.user);
+    }
+  }
+
+  return Array.from(contributors.entries()).map(([login, participationCount]) => ({
+    login,
+    participationCount,
+  }));
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // GitHub login popup
   if (message.type === "LOGIN_GITHUB") {
     startGitHubOAuth()
-      .then(user => {
+      .then((user) => {
         sendResponse({ ok: true, user });
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
         sendResponse({ ok: false, error: err.message });
       });
+    return true; 
+  }
+
+  // Request from the content script for a given issue
+  if (message.type === "OPEN_SPONSOR_FLOW") {
+    (async () => {
+      try {
+        // key name: githubToken
+        const { githubToken } = await chrome.storage.local.get(["githubToken"]);
+        if (!githubToken) {
+          throw new Error("No GitHub token found. Please login with GitHub first.");
+        }
+
+        const { owner, repo, issueNumber } = message.issue;
+        const contributors = await fetchIssueContributors(
+          owner,
+          repo,
+          issueNumber,
+          githubToken,
+        );
+
+        sendResponse({ ok: true, contributors });
+      } catch (e) {
+        console.error(e);
+        sendResponse({ ok: false, error: e.message });
+      }
+    })();
     return true; 
   }
 });
