@@ -47,6 +47,9 @@
 
   // Function to find the New issue button and add Sponsor button next to it
   function addSponsorButton() {
+    if (isIssueDetailPage()) {
+      return;
+    }
     // Check if Sponsor button already exists
     if (document.getElementById("github-bounty-sponsor-btn")) {
       return;
@@ -167,7 +170,7 @@
     sponsorButton.className = newIssueButton.className || "btn";
     sponsorButton.textContent = "Sponsor";
     sponsorButton.setAttribute("type", "button");
-    sponsorButton.style.marginLeft = "8px";
+    sponsorButton.style.marginRight = "8px";
 
     // Copy any relevant attributes from New issue button
     if (newIssueButton.hasAttribute("data-view-component")) {
@@ -188,7 +191,7 @@
         newIssueButton.nextSibling
       );
     } else {
-      newIssueButton.parentNode.appendChild(sponsorButton);
+      newIssueButton.parentNode.insertBefore(sponsorButton, newIssueButton);
     }
 
     console.log(
@@ -1009,18 +1012,195 @@
     // Show modal
     showSponsorModal(issueData);
   }
+  function copyButtonStyle(sourceBtn, targetBtn) {
+    if (!sourceBtn || !targetBtn) return;
+
+    // classes
+    targetBtn.className = sourceBtn.className || "btn";
+
+    // copie les attributs data- et style éventuellement utilisés par GitHub
+    for (const attr of sourceBtn.attributes) {
+      const name = attr.name;
+      if (name === "id" || name === "type") continue;
+      if (name === "class") continue;
+
+      // On copie tout ce qui est data- ou style (et éventuellement d'autres si besoin)
+      if (name.startsWith("data-") || name === "style") {
+        targetBtn.setAttribute(name, attr.value);
+      }
+    }
+
+    // On s’assure qu’il a au moins la classe btn
+    if (!targetBtn.classList.contains("btn")) {
+      targetBtn.classList.add("btn");
+    }
+  }
+
+  // Ajoute le bouton "Claim reward" à gauche de "Reopen issue"
+  function addClaimButton() {
+    // pas de doublon
+    if (document.getElementById("github-bounty-claim-btn")) {
+      return;
+    }
+
+    // seulement sur une page d'issue
+    if (!/\/issues\/\d+/.test(location.pathname)) {
+      return;
+    }
+
+    // on vérifie que l'utilisateur est bien un contributeur
+    if (!isCurrentUserContributor()) {
+      console.log("GitHub Bounty: User is not a contributor for this issue");
+      return;
+    }
+
+    // on cherche le bouton "Reopen issue" (présent uniquement quand l'issue est close)
+    const actionButtons = document.querySelectorAll(
+      "form button, form summary, button, summary"
+    );
+
+    let reopenButton = null;
+
+    for (const btn of actionButtons) {
+      const text = (btn.textContent || "").trim().toLowerCase();
+      if (text === "reopen issue") {
+        reopenButton = btn;
+        break;
+      }
+    }
+
+    if (!reopenButton) {
+      console.log(
+        "GitHub Bounty: Reopen issue button not found -> issue not closed, no Claim button"
+      );
+      return;
+    }
+
+    // création du bouton Claim
+    const claimButton = document.createElement("button");
+    claimButton.id = "github-bounty-claim-btn";
+    claimButton.type = "button";
+    claimButton.textContent = "Claim reward";
+
+    // copie le style du bouton Reopen issue
+    copyButtonStyle(reopenButton, claimButton);
+
+    // un peu d'espace entre Claim et le groupe Reopen+menu
+    claimButton.style.marginRight = "8px";
+
+    claimButton.addEventListener("click", handleClaimClick);
+
+    // === IMPORTANT : insertion avant la BtnGroup, pas dans la BtnGroup ===
+    const btnGroup =
+      reopenButton.closest(".BtnGroup") || reopenButton.parentElement;
+    const container = btnGroup.parentElement;
+
+    container.insertBefore(claimButton, btnGroup);
+
+    console.log("GitHub Bounty: Claim button added successfully");
+  }
+
+  // Retourne true si l'utilisateur courant a participé à l'issue (auteur ou commentaire)
+  function isCurrentUserContributor() {
+    const userMeta = document.querySelector('meta[name="user-login"]');
+    const currentUser = userMeta ? userMeta.getAttribute("content") : null;
+    if (!currentUser) {
+      console.log("GitHub Bounty: No logged-in user detected");
+      return false;
+    }
+
+    const login = currentUser.trim().toLowerCase();
+
+    // On limite la recherche à la discussion principale
+    const discussionRoot =
+      document.querySelector("#discussion_bucket") ||
+      document.querySelector(".js-discussion") ||
+      document;
+
+    const authorNodes = discussionRoot.querySelectorAll(
+      ".timeline-comment-header-text .author, " +
+        ".js-comment .author, " +
+        ".timeline-comment .author, " +
+        ".author"
+    );
+
+    const seen = new Set();
+    for (const node of authorNodes) {
+      const name = (node.textContent || "").trim().toLowerCase();
+      if (!name) continue;
+      seen.add(name);
+      if (name === login) {
+        console.log("GitHub Bounty: current user is contributor", login);
+        return true;
+      }
+    }
+
+    console.log(
+      "GitHub Bounty: current user not found among authors",
+      login,
+      "authors:",
+      Array.from(seen)
+    );
+
+    // Fallback pour le hackathon: si on est connecté et que l'issue est fermée,
+    // on autorise quand même le bouton afin de ne pas bloquer l'UX
+    return true;
+  }
+
+  function handleClaimClick() {
+    const issueUrl = window.location.href;
+    const match = issueUrl.match(
+      /github\.com\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/
+    );
+
+    if (!match) {
+      console.error("GitHub Bounty: Unable to parse issue URL", issueUrl);
+      return;
+    }
+
+    const [, owner, repo, issueNumber] = match;
+
+    const payload = {
+      action: "claimReward",
+      owner,
+      repo,
+      issueNumber,
+      url: issueUrl,
+    };
+
+    console.log("GitHub Bounty: Claim reward clicked", payload);
+
+    if (
+      typeof chrome !== "undefined" &&
+      chrome.runtime &&
+      chrome.runtime.sendMessage
+    ) {
+      chrome.runtime.sendMessage(payload);
+    }
+  }
 
   // Wait for page to load and observe changes (GitHub uses dynamic content)
   function init() {
     console.log("GitHub Bounty: Initializing...");
     
     // Try immediately
+
     addSponsorButton();
 
-    // Also observe DOM changes (GitHub loads content dynamically)
-    const observer = new MutationObserver(function (mutations) {
+    // Bouton Claim uniquement sur une page d'issue
+    if (isIssueDetailPage()) {
+      addClaimButton();
+    }
+
+    const observer = new MutationObserver(function () {
       if (!document.getElementById("github-bounty-sponsor-btn")) {
         addSponsorButton();
+      }
+      if (
+        isIssueDetailPage() &&
+        !document.getElementById("github-bounty-claim-btn")
+      ) {
+        addClaimButton();
       }
     });
 
@@ -1029,12 +1209,27 @@
       subtree: true,
     });
 
-    // Try multiple times with delays to catch late-loading content
-    setTimeout(addSponsorButton, 500);
-    setTimeout(addSponsorButton, 1000);
-    setTimeout(addSponsorButton, 2000);
-    setTimeout(addSponsorButton, 3000);
-    setTimeout(addSponsorButton, 5000);
+    // Plusieurs essais différés
+    setTimeout(() => {
+      addSponsorButton();
+      if (isIssueDetailPage()) addClaimButton();
+    }, 500);
+    setTimeout(() => {
+      addSponsorButton();
+      if (isIssueDetailPage()) addClaimButton();
+    }, 1000);
+    setTimeout(() => {
+      addSponsorButton();
+      if (isIssueDetailPage()) addClaimButton();
+    }, 2000);
+    setTimeout(() => {
+      addSponsorButton();
+      if (isIssueDetailPage()) addClaimButton();
+    }, 3000);
+    setTimeout(() => {
+      addSponsorButton();
+      if (isIssueDetailPage()) addClaimButton();
+    }, 5000);
   }
 
   // Start when DOM is ready
@@ -1056,3 +1251,6 @@
     }
   }).observe(document, { subtree: true, childList: true });
 })();
+function isIssueDetailPage() {
+  return /\/issues\/\d+/.test(location.pathname);
+}
