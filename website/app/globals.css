@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: 'Korosu';
+  src: url('/korosu.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -76,8 +84,7 @@
 
 @theme inline {
   /* Updated to Japanese-inspired fonts */
-  --font-sans: "M PLUS Rounded 1c", "M PLUS Rounded 1c Fallback", sans-serif;
-  --font-serif: "Dela Gothic One", "Dela Gothic One Fallback", sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -122,5 +129,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Korosu', sans-serif;
   }
 }
