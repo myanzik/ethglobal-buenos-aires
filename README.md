@@ -1,4 +1,2 @@
-# ethglobal-buenos-aires
+# Ethglobal-buenos-aires
 Funding mechanism for open source project
-
-fund test
