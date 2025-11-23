@@ -39,21 +39,23 @@ export default function LoginPage() {
       </nav>
 
       {/* Login Content */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex-1 flex items-center justify-center p-4 animate-in fade-in duration-500">
+        <Card className="w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 duration-700">
           <CardHeader className="text-center space-y-2">
-            <div className="w-20 h-20 bg-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-secondary-foreground font-bold text-4xl">G</span>
+            <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/60 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg animate-in zoom-in duration-500 delay-150">
+              <span className="text-primary-foreground font-bold text-4xl">G</span>
             </div>
-            <CardTitle className="text-3xl font-bold">Welcome to Githunder</CardTitle>
-            <CardDescription className="text-base">
+            <CardTitle className="text-3xl font-bold animate-in slide-in-from-bottom-2 duration-500 delay-300">
+              Welcome to Githunder
+            </CardTitle>
+            <CardDescription className="text-base animate-in slide-in-from-bottom-2 duration-500 delay-500">
               Connect your GitHub account to start managing bounties and earning rewards
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 animate-in slide-in-from-bottom-2 duration-500 delay-700">
             <Button
               onClick={handleGitHubLogin}
-              className="w-full h-12 text-base gap-3"
+              className="w-full h-12 text-base gap-3 transition-all hover:scale-105 hover:shadow-lg"
               size="lg"
             >
               <GithubIcon className="w-5 h-5" />

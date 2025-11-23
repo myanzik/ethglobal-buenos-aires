@@ -18,26 +18,35 @@ import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Toast } from "@/components/ui/toast";
 
 function DashboardContent() {
   const { authState, login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       // First, check if there's a token in the URL
       const token = searchParams.get('token');
+      const authSuccess = searchParams.get('auth_success');
       
       if (token && !authState.isAuthenticated) {
         try {
           // Try to log in with the token
           await login(token);
           
+          // Show success toast if auth was successful
+          if (authSuccess === 'true') {
+            setShowSuccessToast(true);
+          }
+          
           // Clean the URL by removing the token parameter
           const url = new URL(window.location.href);
           url.searchParams.delete('token');
+          url.searchParams.delete('auth_success');
           window.history.replaceState({}, '', url);
           
           setIsCheckingAuth(false);
@@ -77,7 +86,15 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/40">
+    <>
+      {showSuccessToast && (
+        <Toast
+          message="Successfully logged in with GitHub!"
+          type="success"
+          onClose={() => setShowSuccessToast(false)}
+        />
+      )}
+      <div className="flex min-h-screen bg-muted/40">
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-card">
         <div className="p-6 border-b">
@@ -164,6 +181,7 @@ function DashboardContent() {
         <DashboardClient />
       </main>
     </div>
+    </>
   );
 }
 

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   // In a production app, you would compare this with a stored state
   
   if (!code) {
-    return NextResponse.redirect(new URL('/auth/error?error=no_code', request.url));
+    return NextResponse.redirect(new URL('/api/auth/error?error=no_code', request.url));
   }
 
   try {
@@ -23,10 +23,11 @@ export async function GET(request: NextRequest) {
     
     // In a real implementation, you might set an HTTP-only cookie instead of using URL parameters
     redirectUrl.searchParams.set('token', accessToken);
+    redirectUrl.searchParams.set('auth_success', 'true');
     
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('GitHub authentication error:', error);
-    return NextResponse.redirect(new URL('/auth/error?error=auth_failed', request.url));
+    return NextResponse.redirect(new URL('/api/auth/error?error=auth_failed', request.url));
   }
 }
