@@ -47,8 +47,18 @@
 
   // Function to find the New issue button and add Sponsor button next to it
   function addSponsorButton() {
+    console.log("GitHub Bounty: addSponsorButton called");
+    
     // Check if Sponsor button already exists
     if (document.getElementById("github-bounty-sponsor-btn")) {
+      console.log("GitHub Bounty: Sponsor button already exists");
+      return;
+    }
+
+    // If we're on an issue detail page, add sponsor button there (only for open issues)
+    if (isIssueDetailPage()) {
+      console.log("GitHub Bounty: On issue detail page, adding sponsor button");
+      addSponsorButtonToIssuePage();
       return;
     }
 
@@ -203,6 +213,217 @@
     console.log(
       "GitHub Bounty: Sponsor button added successfully next to New issue button!"
     );
+  }
+
+  // Add Sponsor button to issue detail page (only for open issues)
+  function addSponsorButtonToIssuePage() {
+    // Check if issue is open
+    if (!isIssueOpen()) {
+      console.log("GitHub Bounty: Issue is closed, not showing sponsor button");
+      return;
+    }
+
+    console.log("GitHub Bounty: Adding sponsor button to open issue page");
+
+    // First, try to find a "New Issue" button or similar navigation button
+    let newIssueButton = null;
+    let targetContainer = null;
+
+    // Strategy 1: Look for "New Issue" button in the header/navigation area
+    const header = document.querySelector(".gh-header, .repository-content, .Layout-main");
+    if (header) {
+      const buttons = header.querySelectorAll('a[href*="/issues/new"], button, a[role="button"], a.btn');
+      for (const btn of buttons) {
+        const text = (btn.textContent || "").trim().toLowerCase();
+        const href = btn.getAttribute("href") || "";
+        const ariaLabel = btn.getAttribute("aria-label") || "";
+        if (
+          text === "new issue" ||
+          (text.includes("new") && text.includes("issue")) ||
+          ariaLabel.toLowerCase().includes("new issue") ||
+          href.includes("/issues/new")
+        ) {
+          newIssueButton = btn;
+          targetContainer = btn.parentElement;
+          console.log("GitHub Bounty: Found New Issue button on issue page");
+          break;
+        }
+      }
+    }
+
+    // Strategy 2: Look in the subnav or issues header area
+    if (!newIssueButton) {
+      const subnav = document.querySelector(".subnav, [data-testid='issues-header']");
+      if (subnav) {
+        const buttons = subnav.querySelectorAll('a[href*="/issues/new"], button, a[role="button"], a.btn');
+        for (const btn of buttons) {
+          const text = (btn.textContent || "").trim().toLowerCase();
+          const href = btn.getAttribute("href") || "";
+          if (
+            text === "new issue" ||
+            (text.includes("new") && text.includes("issue")) ||
+            href.includes("/issues/new")
+          ) {
+            newIssueButton = btn;
+            targetContainer = btn.parentElement;
+            console.log("GitHub Bounty: Found New Issue button in subnav");
+            break;
+          }
+        }
+      }
+    }
+
+    // Strategy 3: Search all links/buttons on the page
+    if (!newIssueButton) {
+      const allLinks = document.querySelectorAll('a[href*="/issues/new"], button, a[role="button"]');
+      for (const link of allLinks) {
+        const text = (link.textContent || "").trim().toLowerCase();
+        const href = link.getAttribute("href") || "";
+        if (
+          text === "new issue" ||
+          (text.includes("new") && text.includes("issue")) ||
+          href.includes("/issues/new")
+        ) {
+          const rect = link.getBoundingClientRect();
+          if (rect.top < 800 && rect.top > 0) {
+            newIssueButton = link;
+            targetContainer = link.parentElement;
+            console.log("GitHub Bounty: Found New Issue button in page");
+            break;
+          }
+        }
+      }
+    }
+
+    // If no "New Issue" button found, look for the issue actions area
+    if (!newIssueButton) {
+      let issueActions = document.querySelector(".gh-header-actions");
+      
+      if (!issueActions) {
+        // Try finding the header area with action buttons
+        const header = document.querySelector(".gh-header");
+        if (header) {
+          issueActions = header.querySelector(".flex-shrink-0, .d-flex");
+        }
+      }
+
+      if (!issueActions) {
+        // Look for any container with "Close issue" button
+        const closeButton = Array.from(document.querySelectorAll("button")).find(
+          btn => (btn.textContent || "").trim().toLowerCase().includes("close issue")
+        );
+        if (closeButton) {
+          issueActions = closeButton.parentElement;
+          newIssueButton = closeButton; // Use close button as reference
+        }
+      }
+
+      if (issueActions) {
+        targetContainer = issueActions;
+        // Use first button as reference for styling
+        newIssueButton = issueActions.querySelector("button, .btn");
+      }
+    }
+
+    if (!targetContainer) {
+      console.log("GitHub Bounty: Could not find target container for sponsor button");
+      return;
+    }
+
+    // Look for existing buttons to match style
+    const existingButton = newIssueButton || targetContainer.querySelector("button, .btn");
+    
+    // Create Sponsor button
+    const sponsorButton = document.createElement("button");
+    sponsorButton.id = "github-bounty-sponsor-btn";
+    sponsorButton.textContent = "Sponsor";
+    sponsorButton.setAttribute("type", "button");
+    sponsorButton.style.marginRight = "8px";
+
+    // Copy style from existing button if available
+    if (existingButton) {
+      copyButtonStyle(existingButton, sponsorButton);
+    } else {
+      // Default styling
+      sponsorButton.className = "btn btn-primary";
+    }
+
+    // Add click handler
+    sponsorButton.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSponsorClick();
+    });
+
+    // Insert the button right after the New Issue button (matching list page behavior)
+    if (newIssueButton) {
+      if (newIssueButton.nextSibling) {
+        newIssueButton.parentNode.insertBefore(
+          sponsorButton,
+          newIssueButton.nextSibling
+        );
+      } else {
+        newIssueButton.parentNode.insertBefore(sponsorButton, newIssueButton);
+      }
+    } else {
+      // Insert at the beginning if no reference button found
+      targetContainer.insertBefore(sponsorButton, targetContainer.firstChild);
+    }
+
+    console.log("GitHub Bounty: Sponsor button added to issue page!");
+  }
+
+  // Check if issue is open
+  function isIssueOpen() {
+    // Check for "Closed" state indicator
+    const stateElement = document.querySelector('[data-testid="issue-state"]');
+    if (stateElement) {
+      const stateText = (stateElement.textContent || "").toLowerCase();
+      if (stateText.includes("closed")) {
+        return false;
+      }
+      if (stateText.includes("open")) {
+        return true;
+      }
+    }
+
+    // Check for state classes
+    const closedState = document.querySelector('.State--closed');
+    if (closedState) {
+      return false;
+    }
+
+    const openState = document.querySelector('.State--open');
+    if (openState) {
+      return true;
+    }
+
+    // Check for buttons
+    const allButtons = document.querySelectorAll('button, [role="button"]');
+    for (const btn of allButtons) {
+      const text = (btn.textContent || "").trim().toLowerCase();
+      if (text === "reopen issue" || text === "reopen") {
+        return false; // Issue is closed
+      }
+      if (text === "close issue" || text === "close") {
+        return true; // Issue is open
+      }
+    }
+
+    // Check for title attributes
+    const elementsWithTitle = document.querySelectorAll('[title*="Closed"], [title*="closed"]');
+    if (elementsWithTitle.length > 0) {
+      return false;
+    }
+
+    const elementsWithOpenTitle = document.querySelectorAll('[title*="Open"], [title*="open"]');
+    if (elementsWithOpenTitle.length > 0) {
+      return true;
+    }
+
+    // Default to open if we can't determine (safer for sponsor button)
+    console.log("GitHub Bounty: Could not determine issue state, defaulting to open");
+    return true;
   }
 
   // Contract configuration
@@ -1043,14 +1264,18 @@
   }
 
   // Ajoute le bouton "Claim reward" à gauche de "Reopen issue"
-  function addClaimButton() {
+  async function addClaimButton() {
+    console.log("GitHub Bounty: addClaimButton called");
+    
     // pas de doublon
     if (document.getElementById("github-bounty-claim-btn")) {
+      console.log("GitHub Bounty: Claim button already exists");
       return;
     }
 
     // seulement sur une page d'issue
     if (!/\/issues\/\d+/.test(location.pathname)) {
+      console.log("GitHub Bounty: Not on an issue detail page:", location.pathname);
       return;
     }
 
@@ -1073,8 +1298,11 @@
       console.log(
         "GitHub Bounty: Reopen issue button not found -> issue not closed, no Claim button"
       );
+      console.log("GitHub Bounty: Available buttons:", Array.from(actionButtons).slice(0, 5).map(b => b.textContent?.trim()));
       return;
     }
+
+    console.log("GitHub Bounty: Found Reopen button, creating Claim button...");
 
     // création du bouton Claim
     const claimButton = document.createElement("button");
@@ -1715,7 +1943,7 @@
 
     // Bouton Claim uniquement sur une page d'issue
     if (isIssueDetailPage()) {
-      addClaimButton();
+      addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
     }
 
     const observer = new MutationObserver(function () {
@@ -1726,7 +1954,7 @@
         isIssueDetailPage() &&
         !document.getElementById("github-bounty-claim-btn")
       ) {
-        addClaimButton();
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
       }
     });
 
@@ -1738,23 +1966,33 @@
     // Plusieurs essais différés
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 500);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 1000);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 2000);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 3000);
     setTimeout(() => {
       addSponsorButton();
-      if (isIssueDetailPage()) addClaimButton();
+      if (isIssueDetailPage()) {
+        addClaimButton().catch(err => console.error("GitHub Bounty: Error adding claim button:", err));
+      }
     }, 5000);
   }
 
